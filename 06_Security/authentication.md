@@ -9,6 +9,7 @@ This document defines the official Enterprise Authentication Strategy for **Stac
 - **Relationship with Authorization** — authentication answers *who is this actor*; `authorization.md` answers *what may this verified actor do*. Authentication is a strict prerequisite to authorization, never a substitute for it.
 - **Relationship with Zero Trust** — authentication is the first and most frequent verification point in the Zero Trust vision defined in `security-architecture.md` (Section 2); "never trust, always verify" begins with verifying identity itself.
 - **Relationship with Business Trust** — every customer, employee, and partner interaction with StackLeo depends on the platform correctly distinguishing legitimate actors from illegitimate ones; authentication failure is a direct failure of the trust described in `01_Business/vision.md`.
+- **Relationship with Authentication Governance** — this document defines authentication philosophy and assurance levels; how that philosophy is governed consistently across every identity domain (workforce, customer, partner, administrative, service, machine) and across the full credential lifecycle is elaborated fully in `authentication-strategy.md`.
 
 This document is implementation-independent and vendor-neutral. It defines authentication philosophy, assurance levels, and governance — not specific authentication protocols, session token formats, or code.
 

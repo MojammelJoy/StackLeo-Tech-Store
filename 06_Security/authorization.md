@@ -9,6 +9,7 @@ This document defines the official Enterprise Authorization and Access Control S
 - **Relationship with Identity Management** — authorization decisions are made against the identity categories, lifecycle state, and trust level defined in `identity-management.md`; a suspended or deactivated identity carries no authorization regardless of its historical permissions.
 - **Relationship with Zero Trust** — authorization is re-evaluated at each meaningful access point, consistent with the Zero Trust vision in `security-architecture.md` (Section 2); a prior authorization decision is never assumed to remain valid indefinitely.
 - **Relationship with Enterprise Security** — this document elaborates the authorization dimension of Identity Security, one of the five domains defined in `security-architecture.md` (Section 3.1), and is a direct application of Least Privilege from `security-principles.md` (Section 3.1).
+- **Relationship with Authorization Governance** — this document defines authorization philosophy and conceptual access control models; how that philosophy is governed consistently across every identity domain (business roles, administrative, service, machine, partner, vendor) and across the full access decision lifecycle is elaborated fully in `authorization-model.md`.
 
 This document is implementation-independent and vendor-neutral. It defines authorization philosophy, models, and governance conceptually — not specific authorization frameworks, protocols, permission schemas, or code.
 
