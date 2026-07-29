@@ -4,6 +4,14 @@
     "target": "ES2022",
     "lib": ["ES2022"],
 
+    // Default for root/shared packages (packages/*). apps/api overrides to
+    // NodeNext; apps/web and apps/admin override to Bundler for Next.js.
+    // Never left unset — an unset module/moduleResolution pair silently
+    // falls back to the legacy "classic" resolver, which TS5070s against
+    // resolveJsonModule.
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+
     "strict": true,
     "noUncheckedIndexedAccess": true,
     "noImplicitOverride": true,

@@ -9,7 +9,11 @@
     "allowJs": false,
     "noEmit": true,
     "incremental": true,
-    "plugins": [{ "name": "next" }],
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
     "paths": {
       "@/*": ["./src/*"],
       "@shared/*": ["../../packages/ui/src/*"],
@@ -21,12 +25,22 @@
     }
   },
   "references": [
-    { "path": "../../packages/ui" },
-    { "path": "../../packages/types" },
-    { "path": "../../packages/utils" },
-    { "path": "../../packages/validation" },
-    { "path": "../../packages/constants" }
+    {
+      "path": "../../packages/ui"
+    },
+    {
+      "path": "../../packages/types"
+    },
+    {
+      "path": "../../packages/utils"
+    },
+    {
+      "path": "../../packages/validation"
+    },
+    {
+      "path": "../../packages/constants"
+    }
   ],
-  "include": ["src", "next-env.d.ts"],
+  "include": ["src", "next-env.d.ts", ".next/types/**/*.ts"],
   "exclude": ["node_modules"]
 }
