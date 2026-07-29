@@ -1,0 +1,74 @@
+# StackLeo Tech Store — Local Development Orchestration (placeholder)
+#
+# Brings up shared infrastructure (PostgreSQL, Redis) and the three
+# application services for local development. Application Dockerfiles
+# live alongside each app in apps/*/Dockerfile.
+
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: stackleo-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: stackleo
+      POSTGRES_PASSWORD: stackleo
+      POSTGRES_DB: stackleo_dev
+    ports:
+      - "5432:5432"
+    volumes:
+      - stackleo-postgres-data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    container_name: stackleo-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - stackleo-redis-data:/data
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    container_name: stackleo-api
+    restart: unless-stopped
+    depends_on:
+      - postgres
+      - redis
+    ports:
+      - "4000:4000"
+    env_file:
+      - apps/api/.env
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    container_name: stackleo-web
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      - "3000:3000"
+    env_file:
+      - apps/web/.env
+
+  admin:
+    build:
+      context: .
+      dockerfile: apps/admin/Dockerfile
+    container_name: stackleo-admin
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      - "3001:3000"
+    env_file:
+      - apps/admin/.env
+
+volumes:
+  stackleo-postgres-data:
+  stackleo-redis-data:

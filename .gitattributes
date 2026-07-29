@@ -1,0 +1,44 @@
+# StackLeo Tech Store — Git attributes
+# Normalizes line endings so the same file doesn't show as changed across
+# Windows, macOS, and Linux contributors.
+
+* text=auto eol=lf
+
+# Explicit text types
+*.ts text eol=lf
+*.tsx text eol=lf
+*.js text eol=lf
+*.jsx text eol=lf
+*.mjs text eol=lf
+*.cjs text eol=lf
+*.json text eol=lf
+*.md text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.css text eol=lf
+*.scss text eol=lf
+*.html text eol=lf
+*.sql text eol=lf
+*.prisma text eol=lf
+*.sh text eol=lf
+.env.example text eol=lf
+
+# Windows-specific scripts keep CRLF
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Binary — never diff, never normalize line endings
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.svg binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.eot binary
+*.pdf binary
+
+# Lockfile — always LF, and marked so diffs don't attempt semantic merges
+pnpm-lock.yaml text eol=lf -diff linguist-generated=true

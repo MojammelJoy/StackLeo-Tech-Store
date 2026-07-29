@@ -1,0 +1,21 @@
+# Dependencies
+node_modules
+pnpm-lock.yaml
+
+# Build outputs
+dist
+build
+.next
+out
+coverage
+.turbo
+
+# Generated
+next-env.d.ts
+*.tsbuildinfo
+
+# Prisma generated client
+apps/api/prisma/migrations
+
+# Package manager
+.pnpm-store

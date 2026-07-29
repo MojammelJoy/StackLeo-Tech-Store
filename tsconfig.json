@@ -1,0 +1,17 @@
+// Solution file for `tsc -b` project-reference orchestration. Holds no source
+// of its own — every composite project (all packages/* plus apps/api) is
+// listed below. apps/web and apps/admin are Next.js-managed (noEmit) and are
+// typechecked independently via their own `tsc --noEmit` script, per standard
+// Next.js + project-references practice.
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "files": [],
+  "references": [
+    { "path": "packages/types" },
+    { "path": "packages/constants" },
+    { "path": "packages/utils" },
+    { "path": "packages/validation" },
+    { "path": "packages/ui" },
+    { "path": "apps/api" }
+  ]
+}

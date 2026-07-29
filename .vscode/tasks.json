@@ -1,0 +1,63 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "install",
+      "type": "shell",
+      "command": "pnpm install",
+      "problemMatcher": [],
+      "group": "build"
+    },
+    {
+      "label": "dev: all",
+      "type": "shell",
+      "command": "pnpm dev",
+      "problemMatcher": [],
+      "isBackground": true,
+      "group": "build"
+    },
+    {
+      "label": "build: all",
+      "type": "shell",
+      "command": "pnpm build",
+      "problemMatcher": ["$tsc"],
+      "group": { "kind": "build", "isDefault": true }
+    },
+    {
+      "label": "lint: all",
+      "type": "shell",
+      "command": "pnpm lint",
+      "problemMatcher": ["$eslint-stylish"],
+      "group": "test"
+    },
+    {
+      "label": "typecheck: all",
+      "type": "shell",
+      "command": "pnpm typecheck",
+      "problemMatcher": ["$tsc"],
+      "group": { "kind": "test", "isDefault": true }
+    },
+    {
+      "label": "format: all",
+      "type": "shell",
+      "command": "pnpm format:fix",
+      "problemMatcher": [],
+      "group": "none"
+    },
+    {
+      "label": "test: all",
+      "type": "shell",
+      "command": "pnpm test",
+      "problemMatcher": [],
+      "group": "test"
+    },
+    {
+      "label": "docker: up (postgres, redis)",
+      "type": "shell",
+      "command": "docker compose up postgres redis",
+      "problemMatcher": [],
+      "isBackground": true,
+      "group": "none"
+    }
+  ]
+}

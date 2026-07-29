@@ -1,0 +1,35 @@
+{
+  "name": "@stackleo/api",
+  "version": "0.1.0",
+  "private": true,
+  "description": "StackLeo Tech Store — backend REST API (Express + Prisma + PostgreSQL + Redis).",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/index.js",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "prisma:generate": "prisma generate --schema prisma/schema.prisma",
+    "prisma:migrate": "prisma migrate dev --schema prisma/schema.prisma"
+  },
+  "dependencies": {
+    "express": "^4.19.0",
+    "@prisma/client": "^5.14.0",
+    "ioredis": "^5.4.0",
+    "zod": "^3.23.0",
+    "@stackleo/types": "workspace:*",
+    "@stackleo/utils": "workspace:*",
+    "@stackleo/validation": "workspace:*",
+    "@stackleo/constants": "workspace:*"
+  },
+  "devDependencies": {
+    "@stackleo/config": "workspace:*",
+    "eslint": "^9.0.0",
+    "typescript": "^5.4.0",
+    "prisma": "^5.14.0",
+    "tsx": "^4.10.0",
+    "@types/express": "^4.17.0",
+    "@types/node": "^20.0.0"
+  }
+}

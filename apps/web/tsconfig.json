@@ -1,0 +1,32 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["DOM", "DOM.Iterable", "ES2022"],
+    "jsx": "preserve",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "allowJs": false,
+    "noEmit": true,
+    "incremental": true,
+    "plugins": [{ "name": "next" }],
+    "paths": {
+      "@/*": ["./src/*"],
+      "@shared/*": ["../../packages/ui/src/*"],
+      "@config/*": ["../../packages/config/*"],
+      "@utils/*": ["../../packages/utils/src/*"],
+      "@types/*": ["../../packages/types/src/*"],
+      "@validation/*": ["../../packages/validation/src/*"],
+      "@constants/*": ["../../packages/constants/src/*"]
+    }
+  },
+  "references": [
+    { "path": "../../packages/ui" },
+    { "path": "../../packages/types" },
+    { "path": "../../packages/utils" },
+    { "path": "../../packages/validation" },
+    { "path": "../../packages/constants" }
+  ],
+  "include": ["src", "next-env.d.ts"],
+  "exclude": ["node_modules"]
+}

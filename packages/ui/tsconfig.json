@@ -1,0 +1,16 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "composite": true,
+    "jsx": "react-jsx",
+    "rootDir": "src",
+    "outDir": "dist",
+    "paths": {
+      "@types/*": ["../types/src/*"],
+      "@utils/*": ["../utils/src/*"]
+    }
+  },
+  "references": [{ "path": "../types" }, { "path": "../utils" }],
+  "include": ["src"],
+  "exclude": ["node_modules", "dist"]
+}

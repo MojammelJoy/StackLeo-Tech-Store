@@ -1,0 +1,22 @@
+{
+  "name": "@stackleo/validation",
+  "version": "0.1.0",
+  "private": true,
+  "description": "StackLeo Tech Store — shared Zod validation schemas.",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "scripts": {
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "zod": "^3.23.0",
+    "@stackleo/types": "workspace:*",
+    "@stackleo/constants": "workspace:*"
+  },
+  "devDependencies": {
+    "@stackleo/config": "workspace:*",
+    "eslint": "^9.0.0",
+    "typescript": "^5.4.0"
+  }
+}

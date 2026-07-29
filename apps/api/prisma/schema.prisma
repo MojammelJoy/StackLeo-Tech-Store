@@ -1,0 +1,13 @@
+// StackLeo API — Prisma schema (placeholder)
+//
+// Data models are intentionally omitted from this scaffold. This file
+// establishes the generator and datasource configuration only.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}

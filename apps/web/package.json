@@ -1,0 +1,32 @@
+{
+  "name": "@stackleo/web",
+  "version": "0.1.0",
+  "private": true,
+  "description": "StackLeo Tech Store — customer-facing storefront (Next.js App Router).",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "next": "^14.2.0",
+    "react": "^18.3.0",
+    "react-dom": "^18.3.0",
+    "@stackleo/ui": "workspace:*",
+    "@stackleo/types": "workspace:*",
+    "@stackleo/utils": "workspace:*",
+    "@stackleo/validation": "workspace:*",
+    "@stackleo/constants": "workspace:*"
+  },
+  "devDependencies": {
+    "@stackleo/config": "workspace:*",
+    "eslint": "^9.0.0",
+    "typescript": "^5.4.0",
+    "tailwindcss": "^3.4.0",
+    "@types/react": "^18.3.0",
+    "@types/react-dom": "^18.3.0",
+    "@types/node": "^20.0.0"
+  }
+}

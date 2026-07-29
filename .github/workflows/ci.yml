@@ -1,0 +1,30 @@
+# StackLeo Tech Store — Continuous Integration (placeholder)
+#
+# This workflow establishes where CI is wired in; job steps are intentionally
+# left as placeholders per this scaffold's "no implementation code" scope.
+
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  lint-typecheck-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      # - name: Install dependencies
+      # - name: Lint
+      # - name: Typecheck
+      # - name: Test
+      # - name: Build

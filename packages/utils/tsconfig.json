@@ -1,0 +1,14 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "composite": true,
+    "rootDir": "src",
+    "outDir": "dist",
+    "paths": {
+      "@types/*": ["../types/src/*"]
+    }
+  },
+  "references": [{ "path": "../types" }],
+  "include": ["src"],
+  "exclude": ["node_modules", "dist"]
+}

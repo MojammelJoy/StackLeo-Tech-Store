@@ -1,0 +1,28 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "composite": true,
+    "target": "ES2022",
+    "lib": ["ES2022"],
+    "module": "CommonJS",
+    "moduleResolution": "Node",
+    "outDir": "dist",
+    "rootDir": "src",
+    "paths": {
+      "@/*": ["./src/*"],
+      "@config/*": ["../../packages/config/*"],
+      "@utils/*": ["../../packages/utils/src/*"],
+      "@types/*": ["../../packages/types/src/*"],
+      "@validation/*": ["../../packages/validation/src/*"],
+      "@constants/*": ["../../packages/constants/src/*"]
+    }
+  },
+  "references": [
+    { "path": "../../packages/types" },
+    { "path": "../../packages/utils" },
+    { "path": "../../packages/validation" },
+    { "path": "../../packages/constants" }
+  ],
+  "include": ["src"],
+  "exclude": ["node_modules", "dist"]
+}

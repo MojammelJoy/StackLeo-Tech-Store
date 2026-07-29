@@ -1,0 +1,6 @@
+# StackLeo Tech Store — pnpm workspace definition.
+# Every deployable app and every shared package is a workspace member.
+
+packages:
+  - "apps/*"
+  - "packages/*"
