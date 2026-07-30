@@ -1,7 +1,31 @@
-// StackLeo API — Prisma schema (placeholder)
+// StackLeo API — Prisma schema (foundation)
 //
-// Data models are intentionally omitted from this scaffold. This file
-// establishes the generator and datasource configuration only.
+// Data models are intentionally omitted from this schema. This file
+// establishes the generator and datasource configuration only, so the
+// connection lifecycle (see src/database/prisma) can be built and typed
+// against a real Prisma client before any domain model exists.
+//
+// Base conventions for future models (apply when domain models are
+// added — not enforced by this file):
+//   - Primary key: `id String @id @default(cuid())`
+//   - Timestamps:  `createdAt DateTime @default(now())`
+//                  `updatedAt DateTime @updatedAt`
+//   - Table names: snake_case via `@@map("table_name")`
+//   - Field names: camelCase in Prisma, mapped to snake_case columns
+//                  via `@map("column_name")` where they differ
+//   - Enums:       PascalCase type, SCREAMING_SNAKE_CASE members
+//   - Every model lives in its own domain-scoped schema file once
+//     `prismaSchemaFolder` (multi-file schemas) is adopted, keeping this
+//     root file limited to generator/datasource configuration
+//
+// Connection pooling: for serverless/edge deployments, add a pooled
+// `DATABASE_URL` (e.g. via PgBouncer) plus a `directUrl` pointing at the
+// unpooled connection for migrations:
+//   datasource db {
+//     provider  = "postgresql"
+//     url       = env("DATABASE_URL")
+//     directUrl = env("DIRECT_URL")
+//   }
 
 generator client {
   provider = "prisma-client-js"

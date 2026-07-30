@@ -1,4 +1,4 @@
-import { checkDatabaseConnection, checkRedisConnection } from "../lib";
+import { checkDatabaseConnection, checkRedisConnection } from "../database";
 
 import type { HealthResponse, LivenessResponse, ReadinessResponse } from "./health.types";
 
