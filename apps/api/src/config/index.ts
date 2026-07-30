@@ -27,6 +27,15 @@ export const config = {
     url: env.REDIS_URL,
   },
 
+  auth: {
+    jwt: {
+      accessSecret: env.JWT_ACCESS_SECRET,
+      refreshSecret: env.JWT_REFRESH_SECRET,
+      accessExpiresIn: env.JWT_ACCESS_EXPIRES_IN,
+      refreshExpiresIn: env.JWT_REFRESH_EXPIRES_IN,
+    },
+  },
+
   logger: {
     level: env.LOG_LEVEL,
   },
