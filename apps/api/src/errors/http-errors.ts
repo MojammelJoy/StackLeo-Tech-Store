@@ -42,6 +42,12 @@ export class InternalServerError extends AppError {
   }
 }
 
+export class NotImplementedError extends AppError {
+  constructor(message = "Not implemented", details?: unknown) {
+    super(message, 501, details);
+  }
+}
+
 export class ServiceUnavailableError extends AppError {
   constructor(message = "Service unavailable", details?: unknown) {
     super(message, 503, details);
