@@ -2,7 +2,7 @@ import { createServer, type Server } from "node:http";
 
 import { createApp } from "./app";
 import { config } from "./config";
-import { connectDatabase, connectRedis, disconnectDatabase, disconnectRedis } from "./lib";
+import { connectDatabase, connectRedis, disconnectDatabase, disconnectRedis } from "./database";
 import { logger } from "./logger";
 import { registerGracefulShutdown } from "./utils";
 
