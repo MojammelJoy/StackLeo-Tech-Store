@@ -5,6 +5,7 @@ export {
   ForbiddenError,
   InternalServerError,
   NotFoundError,
+  NotImplementedError,
   ServiceUnavailableError,
   UnauthorizedError,
 } from "./http-errors";
