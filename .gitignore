@@ -10,11 +10,12 @@ build/
 out/
 coverage/
 
-# Environment files
+# Environment files — every real .env variant, but never the checked-in
+# .example templates (apps/api/.env.staging.example, .env.production.example, etc.)
 .env
-.env.local
-.env.*.local
+.env.*
 !.env.example
+!.env.*.example
 
 # Logs
 logs/

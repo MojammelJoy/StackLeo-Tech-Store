@@ -1,0 +1,48 @@
+# StackLeo Tech Store — staging overlay
+#
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.staging.yml up -d
+#
+# Mirrors production's topology (runner build target, nginx reverse
+# proxy) at a smaller scale, so staging actually validates what
+# production will run rather than a dev-mode approximation of it. Uses
+# apps/api/.env.staging — copy apps/api/.env.staging.example and fill in
+# real staging values; never commit the real file (see .gitignore).
+
+version: "3.9"
+
+services:
+  api:
+    build:
+      target: runner
+    env_file:
+      - apps/api/.env.staging
+    restart: on-failure
+
+  web:
+    build:
+      target: runner
+    restart: on-failure
+
+  admin:
+    build:
+      target: runner
+    restart: on-failure
+
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: stackleo-nginx-staging
+    restart: on-failure
+    depends_on:
+      - web
+      - admin
+      - api
+    ports:
+      - "8080:80"
+    volumes:
+      - ./docker/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

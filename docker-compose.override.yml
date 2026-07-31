@@ -1,0 +1,57 @@
+# StackLeo Tech Store — local development overlay
+#
+# Docker Compose auto-loads this file alongside docker-compose.yml for a
+# plain `docker compose up` — no `-f` flags needed. It layers three
+# things onto the base topology purely for local development
+# convenience: the `dev` build target (live reload via `pnpm dev`),
+# source bind mounts so edits apply without a rebuild, and host port
+# publishing for direct access (bypassing the reverse proxy staging/
+# production use — see docker-compose.production.yml).
+#
+# Not used for staging or production: those are started with explicit
+# `-f docker-compose.yml -f docker-compose.<env>.yml`, which never
+# includes this file.
+
+version: "3.9"
+
+services:
+  postgres:
+    ports:
+      - "5432:5432"
+
+  redis:
+    ports:
+      - "6379:6379"
+
+  api:
+    build:
+      target: dev
+    ports:
+      - "4000:4000"
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/apps/api/node_modules
+      - /app/apps/api/dist
+
+  web:
+    build:
+      target: dev
+    ports:
+      - "3000:3000"
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/apps/web/node_modules
+      - /app/apps/web/.next
+
+  admin:
+    build:
+      target: dev
+    ports:
+      - "3001:3000"
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/apps/admin/node_modules
+      - /app/apps/admin/.next

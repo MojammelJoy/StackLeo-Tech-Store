@@ -1,7 +1,8 @@
-# StackLeo Tech Store — Continuous Integration (placeholder)
+# StackLeo Tech Store — Continuous Integration
 #
-# This workflow establishes where CI is wired in; job steps are intentionally
-# left as placeholders per this scaffold's "no implementation code" scope.
+# Runs on every pull request and push to main: install, lint, typecheck,
+# test, build — the same four gates every Foundation in this repo is
+# validated against locally before being considered done.
 
 name: CI
 
@@ -11,20 +12,39 @@ on:
   push:
     branches: [main]
 
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  lint-typecheck-test:
+  lint-typecheck-test-build:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.1.0
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: "20"
+          cache: "pnpm"
 
-      # - name: Install dependencies
-      # - name: Lint
-      # - name: Typecheck
-      # - name: Test
-      # - name: Build
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Test
+        run: pnpm test
+
+      - name: Build
+        run: pnpm build
