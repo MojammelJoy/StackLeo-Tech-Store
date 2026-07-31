@@ -1,12 +1,6 @@
-// StackLeo API — Prisma schema (foundation)
+// StackLeo API — Prisma schema
 //
-// Data models are intentionally omitted from this schema. This file
-// establishes the generator and datasource configuration only, so the
-// connection lifecycle (see src/database/prisma) can be built and typed
-// against a real Prisma client before any domain model exists.
-//
-// Base conventions for future models (apply when domain models are
-// added — not enforced by this file):
+// Conventions:
 //   - Primary key: `id String @id @default(cuid())`
 //   - Timestamps:  `createdAt DateTime @default(now())`
 //                  `updatedAt DateTime @updatedAt`
@@ -14,9 +8,6 @@
 //   - Field names: camelCase in Prisma, mapped to snake_case columns
 //                  via `@map("column_name")` where they differ
 //   - Enums:       PascalCase type, SCREAMING_SNAKE_CASE members
-//   - Every model lives in its own domain-scoped schema file once
-//     `prismaSchemaFolder` (multi-file schemas) is adopted, keeping this
-//     root file limited to generator/datasource configuration
 //
 // Connection pooling: for serverless/edge deployments, add a pooled
 // `DATABASE_URL` (e.g. via PgBouncer) plus a `directUrl` pointing at the
@@ -34,4 +25,79 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+}
+
+/// The persisted user account. `roles` is a plain string array — see
+/// src/modules/rbac's `Role` vocabulary — rather than a Postgres enum, so
+/// adding a role never requires a migration.
+model User {
+  id              String    @id @default(cuid())
+  email           String    @unique
+  passwordHash    String    @map("password_hash")
+  roles           String[]  @default(["member"])
+  isActive        Boolean   @default(true) @map("is_active")
+  isEmailVerified Boolean   @default(false) @map("is_email_verified")
+  emailVerifiedAt DateTime? @map("email_verified_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  refreshTokens           RefreshToken[]
+  emailVerificationTokens EmailVerificationToken[]
+  passwordResetTokens     PasswordResetToken[]
+
+  @@map("users")
+}
+
+/// One issued refresh token per row — effectively a session. Never
+/// stores the raw JWT: `tokenHash` is a SHA-256 digest, looked up in
+/// constant-ish time on every /refresh call. `replacedById` records the
+/// rotation chain (which token replaced this one), letting a reused,
+/// already-rotated token be detected as a sign of theft.
+model RefreshToken {
+  id           String    @id @default(cuid())
+  userId       String    @map("user_id")
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash    String    @unique @map("token_hash")
+  replacedById String?   @map("replaced_by_id")
+  revokedAt    DateTime? @map("revoked_at")
+  expiresAt    DateTime  @map("expires_at")
+  ipAddress    String?   @map("ip_address")
+  userAgent    String?   @map("user_agent")
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+/// A single-use, short-lived, hashed token proving control of the email
+/// address on the associated user — never the raw token either.
+model EmailVerificationToken {
+  id        String    @id @default(cuid())
+  userId    String    @map("user_id")
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique @map("token_hash")
+  expiresAt DateTime  @map("expires_at")
+  usedAt    DateTime? @map("used_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@map("email_verification_tokens")
+}
+
+/// A single-use, short-lived, hashed token authorizing one password
+/// reset. Deliberately its own table rather than reusing
+/// EmailVerificationToken — the two have different lifetimes and
+/// single-use semantics that would otherwise have to be branched on a
+/// shared `type` column.
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String    @map("user_id")
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique @map("token_hash")
+  expiresAt DateTime  @map("expires_at")
+  usedAt    DateTime? @map("used_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@map("password_reset_tokens")
 }

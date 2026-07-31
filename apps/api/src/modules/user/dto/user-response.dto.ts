@@ -11,6 +11,7 @@ export interface UserResponseDto {
   email: string;
   roles: string[];
   isActive: boolean;
+  isEmailVerified: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -21,6 +22,7 @@ export function toUserResponseDto(user: User): UserResponseDto {
     email: user.email,
     roles: user.roles,
     isActive: user.isActive,
+    isEmailVerified: user.isEmailVerified,
     createdAt: user.createdAt,
     updatedAt: user.updatedAt,
   };

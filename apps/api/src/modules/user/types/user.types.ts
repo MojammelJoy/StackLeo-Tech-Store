@@ -1,9 +1,8 @@
 /**
- * The persisted User domain entity. Not a Prisma-generated type — no
- * `User` model exists in `prisma/schema.prisma` yet (out of scope for
- * this foundation). This is the shape the repository interface and
- * service operate on today, and what a future Prisma model is expected
- * to match once it exists.
+ * The persisted User domain entity — matches the `User` model in
+ * `prisma/schema.prisma`. `isEmailVerified`/`emailVerifiedAt` are set by
+ * `modules/auth`'s email-verification flow, not by anything in this
+ * module.
  */
 export interface User {
   id: string;
@@ -11,6 +10,8 @@ export interface User {
   passwordHash: string;
   roles: string[];
   isActive: boolean;
+  isEmailVerified: boolean;
+  emailVerifiedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -32,4 +33,6 @@ export interface UpdateUserInput {
   passwordHash?: string;
   roles?: string[];
   isActive?: boolean;
+  isEmailVerified?: boolean;
+  emailVerifiedAt?: Date | null;
 }

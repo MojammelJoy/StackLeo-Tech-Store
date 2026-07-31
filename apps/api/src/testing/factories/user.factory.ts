@@ -17,6 +17,8 @@ export const createTestUser = createFactory<User>(() => ({
   passwordHash: "$2a$10$test.fake.hash.never.use.in.prod.0000000000000000",
   roles: [...DEFAULT_TEST_USER_ROLES],
   isActive: true,
+  isEmailVerified: false,
+  emailVerifiedAt: null,
   createdAt: new Date(),
   updatedAt: new Date(),
 }));
