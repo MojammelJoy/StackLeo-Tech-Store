@@ -18,6 +18,7 @@ const accessTokenPayloadSchema = z.object({
 const refreshTokenPayloadSchema = z.object({
   sub: z.string(),
   type: z.literal("refresh"),
+  jti: z.string(),
   iat: z.number(),
   exp: z.number(),
 });

@@ -56,6 +56,11 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # See ci.yml's identical step for why this is explicit here too,
+      # not just relied on via apps/api's `postinstall` script.
+      - name: Generate Prisma Client
+        run: pnpm prisma generate
+
       - name: Lint, typecheck, test, build
         run: |
           pnpm lint

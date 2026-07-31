@@ -37,6 +37,17 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # apps/api's own `postinstall` script already runs this, but it's
+      # kept as an explicit step too: the Prisma client is generated
+      # into node_modules (never committed — see the root .gitignore's
+      # `node_modules/` entry), so every environment that installs
+      # dependencies needs it regenerated before typecheck/build can
+      # resolve `@prisma/client`'s model types. An explicit step also
+      # gives a clearly-named point of failure in CI logs instead of a
+      # confusing downstream TS error.
+      - name: Generate Prisma Client
+        run: pnpm prisma generate
+
       - name: Lint
         run: pnpm lint
 

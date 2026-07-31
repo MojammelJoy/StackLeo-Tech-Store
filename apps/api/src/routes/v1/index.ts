@@ -1,10 +1,10 @@
 import { Router } from "express";
 
+import { authRouter } from "../../modules/auth";
+
 /**
- * Root of the versioned API surface. Intentionally empty at this stage —
- * this milestone only establishes the versioning scaffold. Business
- * routes are registered here (e.g. `v1Router.use("/products", ...)`) in
- * future milestones.
+ * Root of the versioned API surface. Business routes are registered
+ * here as each module's feature work lands.
  *
  * Explicitly typed via the public `Router` export from "express" — an
  * inferred `const` here triggers TS2742 in composite/declaration builds,
@@ -15,3 +15,5 @@ import { Router } from "express";
  * never imported directly.
  */
 export const v1Router: Router = Router();
+
+v1Router.use("/auth", authRouter);
