@@ -17,5 +17,15 @@ export default defineConfig({
     environment: "node",
     globalSetup: ["./src/testing/setup/global-setup.ts"],
     env: { ...TEST_ENV_DEFAULTS },
+    // This app is still in its foundation phase — every module built so
+    // far is reusable infrastructure (types, DTOs, skeleton services),
+    // not yet the business logic real tests would exercise (see
+    // src/testing/'s own doc comments). Vitest's default behavior is to
+    // fail the run when zero test files match, which is right for a
+    // mature suite (an empty run usually means a broken glob) but wrong
+    // here, where zero test files is the expected, honest state. This
+    // keeps `pnpm test` — and CI's `Test` step — green without writing
+    // placeholder tests just to produce a passing exit code.
+    passWithNoTests: true,
   },
 });

@@ -1,0 +1,28 @@
+# StackLeo Tech Store — Prometheus scrape config (future reference, NOT wired in)
+#
+# apps/api exposes no /metrics endpoint today — adding one is application
+# code, out of scope for this deployment foundation. This file exists so
+# that whenever metrics instrumentation *is* added, there's already a
+# documented, ready-to-use scrape config to start from instead of
+# designing one from scratch. See docs/10_Monitoring_Observability/monitoring-configuration.md.
+#
+# To actually use this: rename to `prometheus.yml`, add a `prometheus`
+# service to a compose overlay (image: prom/prometheus, mount this file
+# to /etc/prometheus/prometheus.yml), and give apps/api a `/metrics`
+# route (e.g. via prom-client) before the `api` target below will return
+# anything meaningful.
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: "stackleo-api"
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["api:4000"]
+
+  - job_name: "stackleo-nginx"
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["nginx:9113"] # requires the nginx-prometheus-exporter sidecar

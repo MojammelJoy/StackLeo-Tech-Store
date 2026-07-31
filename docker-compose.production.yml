@@ -1,0 +1,90 @@
+# StackLeo Tech Store — production overlay
+#
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.production.yml up -d
+#
+# Adds the reverse proxy (the only host-facing service), pins the
+# `runner` build target, sets restart-always + resource limits, and
+# prepares `api` for horizontal scaling. Uses apps/api/.env.production —
+# copy apps/api/.env.production.example and fill in real production
+# secrets/URLs; never commit the real file (see .gitignore). See
+# docs/11_Deployment_DevOps/production-checklist.md before actually
+# deploying this.
+#
+# `deploy.replicas` only takes effect under Swarm; for plain
+# `docker compose`, scale explicitly instead:
+#   docker compose -f docker-compose.yml -f docker-compose.production.yml \
+#     up -d --scale api=3
+# `docker/nginx/nginx.conf` is written to load-balance across however
+# many replicas actually exist either way — see that file's header
+# comment.
+
+version: "3.9"
+
+services:
+  postgres:
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 1g
+
+  redis:
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512m
+
+  api:
+    build:
+      target: runner
+    env_file:
+      - apps/api/.env.production
+    restart: always
+    deploy:
+      replicas: 2
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 1g
+
+  web:
+    build:
+      target: runner
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 1g
+
+  admin:
+    build:
+      target: runner
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512m
+
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: stackleo-nginx
+    restart: always
+    depends_on:
+      - web
+      - admin
+      - api
+    ports:
+      - "80:80"
+    volumes:
+      - ./docker/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "5"

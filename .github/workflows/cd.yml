@@ -1,0 +1,114 @@
+# StackLeo Tech Store — Continuous Deployment (template)
+#
+# Deliberately provider-agnostic: builds and validates the deployable
+# artifact for staging/production, then stops at a clearly-marked
+# placeholder where an actual publish step (push to a registry, deploy
+# to Vercel/Render, SSH to a host, etc.) belongs. Adding cloud-specific
+# deployment is out of scope for this foundation — see
+# docs/11_Deployment_DevOps/environments.md for how this maps onto the
+# docker-compose overlays it builds against.
+#
+# GitHub Environments (`environment: staging` / `environment: production`
+# below) give each target its own secrets and, if configured in repo
+# settings, required reviewers/approval gates before the job proceeds —
+# configure those in Settings → Environments once this is wired to a
+# real target.
+
+name: CD
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Environment to deploy"
+        required: true
+        default: staging
+        type: choice
+        options:
+          - staging
+          - production
+
+concurrency:
+  group: cd-${{ github.workflow }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.1.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint, typecheck, test, build
+        run: |
+          pnpm lint
+          pnpm typecheck
+          pnpm test
+          pnpm build
+
+      - name: Build container images
+        run: |
+          docker build -f apps/api/Dockerfile -t stackleo-api:${{ github.sha }} .
+          docker build -f apps/web/Dockerfile -t stackleo-web:${{ github.sha }} .
+          docker build -f apps/admin/Dockerfile -t stackleo-admin:${{ github.sha }} .
+
+      # Placeholder — push each image to your container registry here,
+      # e.g.:
+      #   docker tag stackleo-api:${{ github.sha }} <registry>/stackleo-api:${{ github.sha }}
+      #   docker push <registry>/stackleo-api:${{ github.sha }}
+      # No registry is configured in this foundation.
+
+  deploy-staging:
+    needs: build
+    if: github.event_name == 'workflow_dispatch' && inputs.environment == 'staging'
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Placeholder — this is where an actual deploy step goes:
+      # `bash scripts/deploy.sh staging` against a real host reachable
+      # from this runner, a platform CLI (Vercel/Render), or a
+      # `docker compose -f docker-compose.yml -f docker-compose.staging.yml`
+      # invocation over SSH. None of those are configured here — see this
+      # workflow's header comment.
+      - name: Deploy (not configured)
+        run: |
+          echo "No deployment target configured for staging yet."
+          echo "See docs/11_Deployment_DevOps/environments.md and scripts/deploy.sh."
+
+  deploy-production:
+    needs: build
+    if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.environment == 'production')
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Placeholder — see deploy-staging's comment above. Before pointing
+      # this at a real target, read
+      # docs/11_Deployment_DevOps/production-checklist.md and
+      # docs/11_Deployment_DevOps/release-checklist.md in full.
+      - name: Deploy (not configured)
+        run: |
+          echo "No deployment target configured for production yet."
+          echo "See docs/11_Deployment_DevOps/environments.md and scripts/deploy.sh."

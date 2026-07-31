@@ -1,0 +1,52 @@
+# StackLeo Tech Store — Docker build-context exclusions
+#
+# Applies to every `docker build` in this repo (all Dockerfiles build
+# from the monorepo root context). Keeps the build context small and,
+# more importantly, keeps real secrets out of it entirely — the `dev`/
+# `builder` stages in apps/*/Dockerfile run `COPY . .`, so anything not
+# excluded here is a candidate for ending up inside an image layer.
+
+# Dependencies (reinstalled inside the image; never copy the host's)
+node_modules/
+**/node_modules/
+.pnp
+.pnp.js
+
+# Build outputs (regenerated inside the image)
+dist/
+build/
+.next/
+out/
+coverage/
+**/*.tsbuildinfo
+
+# Environment files — never bake real secrets into an image; runtime
+# config is injected via `env_file`/`environment` in docker-compose.
+.env
+.env.local
+.env.*.local
+.env.staging
+.env.production
+!.env.example
+!.env.*.example
+
+# Version control / editor / OS noise
+.git/
+.github/
+.vscode/
+.DS_Store
+Thumbs.db
+*.swp
+
+# Logs
+logs/
+*.log
+
+# Turborepo / Vercel local caches
+.turbo/
+.vercel/
+
+# Documentation — never needed inside a runtime image
+docs/
+README.md
+**/README.md

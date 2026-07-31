@@ -1,8 +1,25 @@
-# StackLeo Tech Store — Local Development Orchestration (placeholder)
+# StackLeo Tech Store — base service topology
 #
-# Brings up shared infrastructure (PostgreSQL, Redis) and the three
-# application services for local development. Application Dockerfiles
-# live alongside each app in apps/*/Dockerfile.
+# Defines *what exists and how it's wired together*; it deliberately
+# publishes no application ports to the host and picks no build target,
+# so it's safe to layer any environment on top of:
+#
+#   Local development (auto-loaded, no -f needed):
+#     docker compose up
+#     → merges docker-compose.override.yml: dev build target, bind
+#       mounts for live reload, and host ports for direct access.
+#
+#   Staging:
+#     docker compose -f docker-compose.yml -f docker-compose.staging.yml up -d
+#
+#   Production:
+#     docker compose -f docker-compose.yml -f docker-compose.production.yml up -d
+#     → both overlays add an nginx reverse proxy (see docker/nginx/) that
+#       owns the only host-facing ports; see docs/11_Deployment_DevOps/environments.md.
+#
+# Postgres/Redis intentionally publish no host port here either — see
+# docker-compose.override.yml, which is the only layer that opens them,
+# for local `psql`/`redis-cli` access.
 
 version: "3.9"
 
@@ -15,19 +32,38 @@ services:
       POSTGRES_USER: stackleo
       POSTGRES_PASSWORD: stackleo
       POSTGRES_DB: stackleo_dev
-    ports:
-      - "5432:5432"
     volumes:
       - stackleo-postgres-data:/var/lib/postgresql/data
+      - ./docker/postgres:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U stackleo -d stackleo_dev"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   redis:
     image: redis:7-alpine
     container_name: stackleo-redis
     restart: unless-stopped
-    ports:
-      - "6379:6379"
     volumes:
       - stackleo-redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   api:
     build:
@@ -36,12 +72,17 @@ services:
     container_name: stackleo-api
     restart: unless-stopped
     depends_on:
-      - postgres
-      - redis
-    ports:
-      - "4000:4000"
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     env_file:
       - apps/api/.env
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   web:
     build:
@@ -51,10 +92,13 @@ services:
     restart: unless-stopped
     depends_on:
       - api
-    ports:
-      - "3000:3000"
     env_file:
       - apps/web/.env
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   admin:
     build:
@@ -64,10 +108,13 @@ services:
     restart: unless-stopped
     depends_on:
       - api
-    ports:
-      - "3001:3000"
     env_file:
       - apps/admin/.env
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
 volumes:
   stackleo-postgres-data:
