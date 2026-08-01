@@ -1,1 +1,8 @@
-export type { Category, CreateCategoryInput, UpdateCategoryInput } from "./category.types";
+export type {
+  Category,
+  CategoryNode,
+  CreateCategoryInput,
+  UpdateCategoryInput,
+  UpdateCategoryStatusInput,
+  UpdateCategoryVisibilityInput,
+} from "./category.types";
