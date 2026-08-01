@@ -44,6 +44,9 @@ model User {
   refreshTokens           RefreshToken[]
   emailVerificationTokens EmailVerificationToken[]
   passwordResetTokens     PasswordResetToken[]
+  profile                 UserProfile?
+  preferences             UserPreferences?
+  emailChangeTokens       EmailChangeToken[]
 
   @@map("users")
 }
@@ -100,4 +103,68 @@ model PasswordResetToken {
 
   @@index([userId])
   @@map("password_reset_tokens")
+}
+
+/// Display/contact information and profile-visibility settings — kept
+/// separate from `User` (identity + credentials) so profile edits never
+/// touch the account/security fields, and so a user can exist without a
+/// profile row until one is actually created (see the User API's
+/// `getOwnProfile`, which upserts a default on first read).
+model UserProfile {
+  id              String    @id @default(cuid())
+  userId          String    @unique @map("user_id")
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  displayName     String?   @map("display_name")
+  bio             String?
+  phoneNumber     String?   @map("phone_number")
+  avatarUrl       String?   @map("avatar_url")
+  avatarUpdatedAt DateTime? @map("avatar_updated_at")
+  /// Whether `GET /users/:id` exposes this profile to other users at
+  /// all — see the User API's `getPublicProfile`.
+  isPublic        Boolean   @default(true) @map("is_public")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  @@map("user_profiles")
+}
+
+/// App-level UX/notification settings — distinct from `UserProfile`:
+/// this is how the user wants the product to behave for them, not how
+/// they present themselves to others.
+model UserPreferences {
+  id                   String   @id @default(cuid())
+  userId               String   @unique @map("user_id")
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  locale               String   @default("en")
+  timezone             String   @default("UTC")
+  currency             String   @default("USD")
+  theme                String   @default("system")
+  marketingEmailsOptIn Boolean  @default(true) @map("marketing_emails_opt_in")
+  orderUpdatesOptIn    Boolean  @default(true) @map("order_updates_opt_in")
+  createdAt            DateTime @default(now()) @map("created_at")
+  updatedAt            DateTime @updatedAt @map("updated_at")
+
+  @@map("user_preferences")
+}
+
+/// A single-use, short-lived, hashed token authorizing a pending change
+/// of `User.email` to `newEmail`. Deliberately its own table rather than
+/// reusing `modules/auth`'s `EmailVerificationToken` — that table (and
+/// the module that owns it) is scoped to authentication concerns
+/// (proving control of the email an account was *registered* with);
+/// changing an already-verified account's email afterward is a user/
+/// profile concern this module owns end to end, following the same
+/// hashed-opaque-token pattern `modules/auth` already established.
+model EmailChangeToken {
+  id        String    @id @default(cuid())
+  userId    String    @map("user_id")
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  newEmail  String    @map("new_email")
+  tokenHash String    @unique @map("token_hash")
+  expiresAt DateTime  @map("expires_at")
+  usedAt    DateTime? @map("used_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@map("email_change_tokens")
 }
