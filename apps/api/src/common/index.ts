@@ -8,7 +8,13 @@
 export { HTTP_STATUS, PAGINATION_DEFAULTS, QUERY_PARAM_KEYS, SORT_DEFAULTS } from "./constants";
 export type { HttpStatus } from "./constants";
 
-export { buildPaginationMeta, getPaginationOffset, parsePaginationParams } from "./pagination";
+export {
+  buildCursorPaginationMeta,
+  buildPaginationMeta,
+  getPaginationOffset,
+  parseCursorPaginationParams,
+  parsePaginationParams,
+} from "./pagination";
 
 export {
   buildErrorResponse,
@@ -22,6 +28,9 @@ export type { SendSuccessOptions } from "./responses";
 export type {
   ApiErrorResponse,
   ApiSuccessResponse,
+  CursorPaginatedResult,
+  CursorPaginationMeta,
+  CursorPaginationParams,
   FilterCondition,
   FilterOperator,
   FilterParams,

@@ -16,13 +16,27 @@ export const ROLE_PERMISSIONS: RolePermissionMap = {
     PERMISSIONS.USER_UPDATE,
     PERMISSIONS.USER_DELETE,
     PERMISSIONS.RBAC_MANAGE,
+    PERMISSIONS.PRODUCT_READ,
+    PERMISSIONS.PRODUCT_CREATE,
+    PERMISSIONS.PRODUCT_UPDATE,
+    PERMISSIONS.PRODUCT_DELETE,
   ],
   [ROLES.ADMIN]: [
     PERMISSIONS.USER_READ,
     PERMISSIONS.USER_CREATE,
     PERMISSIONS.USER_UPDATE,
     PERMISSIONS.USER_DELETE,
+    PERMISSIONS.PRODUCT_READ,
+    PERMISSIONS.PRODUCT_CREATE,
+    PERMISSIONS.PRODUCT_UPDATE,
+    PERMISSIONS.PRODUCT_DELETE,
   ],
+  // `PRODUCT_READ` is deliberately absent here: it gates seeing
+  // non-`ACTIVE`/non-`PUBLIC`/soft-deleted products (see
+  // `modules/product`'s `ProductService.canBypassVisibilityScope`), a
+  // staff-only capability. A member's product visibility is otherwise
+  // identical to an anonymous visitor's — browsing the public catalog
+  // needs no permission at all.
   [ROLES.MEMBER]: [PERMISSIONS.USER_READ],
 };
 

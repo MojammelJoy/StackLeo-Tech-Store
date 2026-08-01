@@ -1,5 +1,12 @@
 export type { ApiErrorResponse, ApiSuccessResponse, ResponseMeta } from "./api-response.types";
-export type { PaginatedResult, PaginationMeta, PaginationParams } from "./pagination.types";
+export type {
+  CursorPaginatedResult,
+  CursorPaginationMeta,
+  CursorPaginationParams,
+  PaginatedResult,
+  PaginationMeta,
+  PaginationParams,
+} from "./pagination.types";
 export type {
   FilterCondition,
   FilterOperator,

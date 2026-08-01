@@ -1,6 +1,11 @@
 import { PAGINATION_DEFAULTS, QUERY_PARAM_KEYS } from "../constants";
 
-import type { PaginationMeta, PaginationParams } from "../types";
+import type {
+  CursorPaginatedResult,
+  CursorPaginationParams,
+  PaginationMeta,
+  PaginationParams,
+} from "../types";
 
 /**
  * Parses `page`/`limit` from raw query values, silently falling back to
@@ -44,6 +49,50 @@ export function buildPaginationMeta(
     totalPages,
     hasNextPage: page < totalPages,
     hasPreviousPage: page > 1,
+  };
+}
+
+/**
+ * Parses `cursor`/`limit` from raw query values. Unlike
+ * `parsePaginationParams`, an invalid/missing `cursor` is simply
+ * treated as "start from the beginning" rather than falling back to a
+ * default — there is no meaningful default cursor.
+ */
+export function parseCursorPaginationParams(
+  query: Record<string, unknown>,
+): CursorPaginationParams {
+  const rawCursor = query[QUERY_PARAM_KEYS.CURSOR];
+  const cursor = typeof rawCursor === "string" && rawCursor.length > 0 ? rawCursor : undefined;
+  const limit = Math.min(
+    toPositiveInteger(query[QUERY_PARAM_KEYS.LIMIT]) ?? PAGINATION_DEFAULTS.LIMIT,
+    PAGINATION_DEFAULTS.MAX_LIMIT,
+  );
+
+  return { cursor, limit };
+}
+
+/**
+ * Turns a repository's raw result (fetched with `take: limit + 1`, the
+ * standard "fetch one extra row" cursor-pagination trick) into the page
+ * actually returned to the caller plus its metadata. The extra row is
+ * never included in `items` — it exists only to answer `hasNextPage`
+ * without a separate count query.
+ */
+export function buildCursorPaginationMeta<T extends { id: string }>(
+  rows: T[],
+  limit: number,
+): CursorPaginatedResult<T> {
+  const hasNextPage = rows.length > limit;
+  const items = hasNextPage ? rows.slice(0, limit) : rows;
+  const lastItem = items[items.length - 1];
+
+  return {
+    items,
+    meta: {
+      limit,
+      hasNextPage,
+      nextCursor: hasNextPage && lastItem ? lastItem.id : null,
+    },
   };
 }
 
