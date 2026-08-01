@@ -302,3 +302,42 @@ model Category {
   @@index([deletedAt])
   @@map("categories")
 }
+
+/// The persisted brand catalog entry. `status`/`visibility` are plain
+/// strings, mirroring `Product`/`Category` (see `Product`'s doc comment
+/// for the shared rationale) — `modules/brand`'s `BRAND_STATUSES`/
+/// `BRAND_VISIBILITIES` own the actual vocabulary. Unlike `Category`, a
+/// `Brand` has no self-reference — brands are a flat list, not a
+/// hierarchy.
+model Brand {
+  id          String  @id @default(cuid())
+  name        String
+  slug        String  @unique
+  description String?
+
+  /// Logo *metadata* only — no file storage/upload infrastructure
+  /// exists yet (out of scope for this API, same as `UserProfile`'s
+  /// `avatarUrl`), so this is the already-uploaded asset's URL plus
+  /// display metadata, never the image bytes themselves.
+  logoUrl       String?   @map("logo_url")
+  logoAltText   String?   @map("logo_alt_text")
+  logoUpdatedAt DateTime? @map("logo_updated_at")
+
+  websiteUrl String? @map("website_url")
+
+  status     String @default("draft")
+  visibility String @default("public")
+
+  seoTitle       String?  @map("seo_title")
+  seoDescription String?  @map("seo_description")
+  seoKeywords    String[] @default([]) @map("seo_keywords")
+
+  deletedAt DateTime? @map("deleted_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  @@index([status])
+  @@index([visibility])
+  @@index([deletedAt])
+  @@map("brands")
+}
