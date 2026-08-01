@@ -1,7 +1,7 @@
 /**
  * The complete permission vocabulary, `resource:action` by convention.
- * Scoped to `user`/`product`/`category` (the domain modules that exist)
- * and to RBAC's own administration.
+ * Scoped to `user`/`product`/`category`/`brand` (the domain modules
+ * that exist) and to RBAC's own administration.
  */
 export const PERMISSIONS = {
   USER_READ: "user:read",
@@ -17,6 +17,10 @@ export const PERMISSIONS = {
   CATEGORY_CREATE: "category:create",
   CATEGORY_UPDATE: "category:update",
   CATEGORY_DELETE: "category:delete",
+  BRAND_READ: "brand:read",
+  BRAND_CREATE: "brand:create",
+  BRAND_UPDATE: "brand:update",
+  BRAND_DELETE: "brand:delete",
 } as const;
 
 export type Permission = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];

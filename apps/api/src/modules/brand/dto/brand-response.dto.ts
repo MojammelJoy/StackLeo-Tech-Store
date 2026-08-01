@@ -1,4 +1,4 @@
-import type { BrandStatus } from "../constants";
+import type { BrandStatus, BrandVisibility } from "../constants";
 
 /**
  * The public-facing shape of a Brand. Structurally identical to the
@@ -13,8 +13,14 @@ export interface BrandResponseDto {
   slug: string;
   description: string | null;
   logoUrl: string | null;
+  logoAltText: string | null;
+  logoUpdatedAt: Date | null;
   websiteUrl: string | null;
   status: BrandStatus;
+  visibility: BrandVisibility;
+  seoTitle: string | null;
+  seoDescription: string | null;
+  seoKeywords: string[];
   createdAt: Date;
   updatedAt: Date;
 }

@@ -1,6 +1,7 @@
 import { Router } from "express";
 
 import { AuthPrismaRepository, AuthService, authRouter } from "../../modules/auth";
+import { brandRouter } from "../../modules/brand";
 import { categoryRouter } from "../../modules/category";
 import { productRouter } from "../../modules/product";
 import { UserPrismaRepository, createUserRouter } from "../../modules/user";
@@ -46,3 +47,4 @@ v1Router.use("/auth", authRouter);
 v1Router.use("/users", userRouter);
 v1Router.use("/products", productRouter);
 v1Router.use("/categories", categoryRouter);
+v1Router.use("/brands", brandRouter);

@@ -24,6 +24,10 @@ export const ROLE_PERMISSIONS: RolePermissionMap = {
     PERMISSIONS.CATEGORY_CREATE,
     PERMISSIONS.CATEGORY_UPDATE,
     PERMISSIONS.CATEGORY_DELETE,
+    PERMISSIONS.BRAND_READ,
+    PERMISSIONS.BRAND_CREATE,
+    PERMISSIONS.BRAND_UPDATE,
+    PERMISSIONS.BRAND_DELETE,
   ],
   [ROLES.ADMIN]: [
     PERMISSIONS.USER_READ,
@@ -38,11 +42,15 @@ export const ROLE_PERMISSIONS: RolePermissionMap = {
     PERMISSIONS.CATEGORY_CREATE,
     PERMISSIONS.CATEGORY_UPDATE,
     PERMISSIONS.CATEGORY_DELETE,
+    PERMISSIONS.BRAND_READ,
+    PERMISSIONS.BRAND_CREATE,
+    PERMISSIONS.BRAND_UPDATE,
+    PERMISSIONS.BRAND_DELETE,
   ],
-  // `PRODUCT_READ`/`CATEGORY_READ` are deliberately absent here: each
-  // gates seeing its module's non-`ACTIVE`/non-`PUBLIC`/soft-deleted
-  // rows (see `ProductService.canBypassVisibilityScope` and
-  // `CategoryService.canBypassVisibilityScope`), a staff-only
+  // `PRODUCT_READ`/`CATEGORY_READ`/`BRAND_READ` are deliberately absent
+  // here: each gates seeing its module's non-`ACTIVE`/non-`PUBLIC`/
+  // soft-deleted rows (see `ProductService`/`CategoryService`/
+  // `BrandService`'s `canBypassVisibilityScope`), a staff-only
   // capability. A member's catalog visibility is otherwise identical to
   // an anonymous visitor's — browsing the public catalog needs no
   // permission at all.
