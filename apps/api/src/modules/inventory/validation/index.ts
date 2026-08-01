@@ -1,3 +1,11 @@
+export { adjustStockSchema } from "./adjust-stock.schema";
 export { createInventoryItemSchema } from "./create-inventory-item.schema";
 export { createInventoryMovementSchema } from "./create-inventory-movement.schema";
+export { decreaseStockSchema } from "./decrease-stock.schema";
+export { increaseStockSchema } from "./increase-stock.schema";
+export { inventoryIdParamsSchema } from "./inventory-id-params.schema";
+export { inventorySkuParamsSchema } from "./inventory-sku-params.schema";
+export { releaseStockSchema } from "./release-stock.schema";
+export { reserveStockSchema } from "./reserve-stock.schema";
+export { transferStockSchema } from "./transfer-stock.schema";
 export { updateInventoryItemSchema } from "./update-inventory-item.schema";

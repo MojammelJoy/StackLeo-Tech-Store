@@ -28,6 +28,10 @@ export const ROLE_PERMISSIONS: RolePermissionMap = {
     PERMISSIONS.BRAND_CREATE,
     PERMISSIONS.BRAND_UPDATE,
     PERMISSIONS.BRAND_DELETE,
+    PERMISSIONS.INVENTORY_READ,
+    PERMISSIONS.INVENTORY_CREATE,
+    PERMISSIONS.INVENTORY_UPDATE,
+    PERMISSIONS.INVENTORY_ADJUST,
   ],
   [ROLES.ADMIN]: [
     PERMISSIONS.USER_READ,
@@ -46,6 +50,10 @@ export const ROLE_PERMISSIONS: RolePermissionMap = {
     PERMISSIONS.BRAND_CREATE,
     PERMISSIONS.BRAND_UPDATE,
     PERMISSIONS.BRAND_DELETE,
+    PERMISSIONS.INVENTORY_READ,
+    PERMISSIONS.INVENTORY_CREATE,
+    PERMISSIONS.INVENTORY_UPDATE,
+    PERMISSIONS.INVENTORY_ADJUST,
   ],
   // `PRODUCT_READ`/`CATEGORY_READ`/`BRAND_READ` are deliberately absent
   // here: each gates seeing its module's non-`ACTIVE`/non-`PUBLIC`/
@@ -53,7 +61,10 @@ export const ROLE_PERMISSIONS: RolePermissionMap = {
   // `BrandService`'s `canBypassVisibilityScope`), a staff-only
   // capability. A member's catalog visibility is otherwise identical to
   // an anonymous visitor's — browsing the public catalog needs no
-  // permission at all.
+  // permission at all. `INVENTORY_*` is absent entirely: unlike the
+  // catalog modules, inventory has no public-facing subset at all (see
+  // `PERMISSIONS.INVENTORY_READ`'s doc comment) — a member has no
+  // inventory access whatsoever, the same as an anonymous caller.
   [ROLES.MEMBER]: [PERMISSIONS.USER_READ],
 };
 

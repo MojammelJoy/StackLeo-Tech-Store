@@ -341,3 +341,67 @@ model Brand {
   @@index([deletedAt])
   @@map("brands")
 }
+
+/// One SKU's stock record *at a specific warehouse* — `warehouseId` is a
+/// bare foreign-key-shaped field, not a dependency on a warehouse
+/// module (there is none yet; this field is what makes the model
+/// already multi-warehouse-ready). `sku` mirrors `Product.sku` by
+/// convention only — there is no enforced relationship between the two
+/// models. Deliberately has no `availableQuantity` column:
+/// `quantity - reservedQuantity` is a derived fact recomputed on every
+/// read (see `modules/inventory`'s `getAvailableQuantity`), never
+/// stored, so it can never drift out of sync with the two numbers it
+/// comes from.
+///
+/// `version` is an optimistic-concurrency token, incremented on every
+/// write that changes `quantity`/`reservedQuantity`/`status`. Every
+/// such write goes through `InventoryPrismaRepository.applyStockChange`/
+/// `transferStock`, which conditions its `UPDATE` on the caller's
+/// last-read `version` — two concurrent stock mutations against the
+/// same item can never silently overwrite one another; the loser's
+/// write matches zero rows and is surfaced as a retryable conflict (see
+/// `service/inventory.service.ts`'s `withOptimisticRetry`).
+model InventoryItem {
+  id                String @id @default(cuid())
+  sku               String
+  warehouseId       String @map("warehouse_id")
+  quantity          Int    @default(0)
+  reservedQuantity  Int    @default(0) @map("reserved_quantity")
+  lowStockThreshold Int    @default(10) @map("low_stock_threshold")
+  status            String @default("in_stock")
+  version           Int    @default(0)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  movements InventoryMovement[]
+
+  @@unique([sku, warehouseId])
+  @@index([warehouseId])
+  @@index([status])
+  @@map("inventory_items")
+}
+
+/// One recorded stock movement — the audit-trail ledger of how an
+/// item's quantity/reservedQuantity changed over time. `quantity` is
+/// always a positive magnitude; direction is implied entirely by
+/// `type`. Movements are append-only: nothing in this module ever
+/// updates or deletes a row here.
+model InventoryMovement {
+  id              String        @id @default(cuid())
+  inventoryItemId String        @map("inventory_item_id")
+  inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
+  type            String
+  quantity        Int
+  reason          String?
+  /// Set only for `transfer_in`/`transfer_out` movements — the id of
+  /// the `InventoryItem` on the *other* side of the transfer, so the
+  /// ledger can reconstruct a transfer as one logical event spanning
+  /// two items instead of two unrelated-looking rows.
+  relatedItemId   String?       @map("related_item_id")
+  createdAt       DateTime      @default(now()) @map("created_at")
+
+  @@index([inventoryItemId])
+  @@index([createdAt])
+  @@map("inventory_movements")
+}

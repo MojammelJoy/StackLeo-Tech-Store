@@ -1,5 +1,12 @@
+export type { AdjustStockDto } from "./adjust-stock.dto";
 export type { CreateInventoryItemDto } from "./create-inventory-item.dto";
 export type { CreateInventoryMovementDto } from "./create-inventory-movement.dto";
+export type { DecreaseStockDto } from "./decrease-stock.dto";
+export type { IncreaseStockDto } from "./increase-stock.dto";
 export type { InventoryItemResponseDto } from "./inventory-item-response.dto";
 export type { InventoryMovementResponseDto } from "./inventory-movement-response.dto";
+export type { ReleaseStockDto } from "./release-stock.dto";
+export type { ReserveStockDto } from "./reserve-stock.dto";
+export type { TransferStockDto } from "./transfer-stock.dto";
+export type { TransferStockResponseDto } from "./transfer-stock-response.dto";
 export type { UpdateInventoryItemDto } from "./update-inventory-item.dto";
