@@ -1,6 +1,6 @@
-import type { CategoryResponseDto } from "../dto";
+import type { CategoryResponseDto, CategoryTreeResponseDto } from "../dto";
 import type { CategoryMapper } from "../interfaces";
-import type { Category } from "../types";
+import type { Category, CategoryNode } from "../types";
 
 function toResponseDto(category: Category): CategoryResponseDto {
   return {
@@ -10,6 +10,11 @@ function toResponseDto(category: Category): CategoryResponseDto {
     description: category.description,
     parentId: category.parentId,
     status: category.status,
+    visibility: category.visibility,
+    sortOrder: category.sortOrder,
+    seoTitle: category.seoTitle,
+    seoDescription: category.seoDescription,
+    seoKeywords: category.seoKeywords,
     createdAt: category.createdAt,
     updatedAt: category.updatedAt,
   };
@@ -19,9 +24,25 @@ function toResponseList(categories: Category[]): CategoryResponseDto[] {
   return categories.map(toResponseDto);
 }
 
+function toTreeResponseDto(node: CategoryNode): CategoryTreeResponseDto {
+  return {
+    ...toResponseDto(node),
+    children: node.children.map(toTreeResponseDto),
+  };
+}
+
+function toTreeResponseList(nodes: CategoryNode[]): CategoryTreeResponseDto[] {
+  return nodes.map(toTreeResponseDto);
+}
+
 /**
- * The only place a `Category` is converted to its public
- * `CategoryResponseDto` shape — callers map through this instead of
- * building the DTO by hand.
+ * The only place a `Category`/`CategoryNode` is converted to its public
+ * response shape — callers map through this instead of building either
+ * DTO by hand.
  */
-export const categoryMapper: CategoryMapper = { toResponseDto, toResponseList };
+export const categoryMapper: CategoryMapper = {
+  toResponseDto,
+  toResponseList,
+  toTreeResponseDto,
+  toTreeResponseList,
+};

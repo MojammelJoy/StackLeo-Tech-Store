@@ -1,5 +1,5 @@
-import type { CategoryResponseDto } from "../dto";
-import type { Category } from "../types";
+import type { CategoryResponseDto, CategoryTreeResponseDto } from "../dto";
+import type { Category, CategoryNode } from "../types";
 
 /**
  * Contract `mapper/category.mapper.ts` implements. Kept separate from
@@ -10,4 +10,8 @@ import type { Category } from "../types";
 export interface CategoryMapper {
   toResponseDto(category: Category): CategoryResponseDto;
   toResponseList(categories: Category[]): CategoryResponseDto[];
+  /** Recursively maps a domain `CategoryNode` (built by
+   * `utils/tree.util.ts`) to its public, nested response shape. */
+  toTreeResponseDto(node: CategoryNode): CategoryTreeResponseDto;
+  toTreeResponseList(nodes: CategoryNode[]): CategoryTreeResponseDto[];
 }

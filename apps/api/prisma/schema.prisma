@@ -258,3 +258,47 @@ model ProductSpecification {
   @@index([productId])
   @@map("product_specifications")
 }
+
+/// The persisted category catalog entry. `status`/`visibility` are
+/// plain strings, mirroring `Product`'s own fields (see `Product`'s doc
+/// comment for the shared rationale) — `modules/category`'s
+/// `CATEGORY_STATUSES`/`CATEGORY_VISIBILITIES` own the actual
+/// vocabulary. `parentId` self-references another `Category`, giving
+/// categories a tree shape; `null` means "top-level." `onDelete:
+/// SetNull` on that self-relation only matters for a hard delete, which
+/// this module never performs through its own API (it soft-deletes via
+/// `deletedAt`, cascaded to descendants in
+/// `service/category.service.ts`) — it exists purely so the schema
+/// itself stays valid without requiring every child to be deleted
+/// before its parent could ever be hard-deleted by some other path.
+model Category {
+  id          String  @id @default(cuid())
+  name        String
+  slug        String  @unique
+  description String?
+
+  parentId String?    @map("parent_id")
+  parent   Category?  @relation("CategoryHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
+  children Category[] @relation("CategoryHierarchy")
+
+  status     String @default("draft")
+  visibility String @default("public")
+  /// Display order among sibling categories (same `parentId`) —
+  /// ascending, ties broken by `name`. Never unique: gaps and ties are
+  /// both fine, only relative order matters.
+  sortOrder  Int    @default(0) @map("sort_order")
+
+  seoTitle       String?  @map("seo_title")
+  seoDescription String?  @map("seo_description")
+  seoKeywords    String[] @default([]) @map("seo_keywords")
+
+  deletedAt DateTime? @map("deleted_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  @@index([parentId])
+  @@index([status])
+  @@index([visibility])
+  @@index([deletedAt])
+  @@map("categories")
+}

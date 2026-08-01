@@ -1,4 +1,4 @@
-import type { CategoryStatus } from "../constants";
+import type { CategoryStatus, CategoryVisibility } from "../constants";
 
 /**
  * The public-facing shape of a Category. Structurally identical to the
@@ -14,6 +14,11 @@ export interface CategoryResponseDto {
   description: string | null;
   parentId: string | null;
   status: CategoryStatus;
+  visibility: CategoryVisibility;
+  sortOrder: number;
+  seoTitle: string | null;
+  seoDescription: string | null;
+  seoKeywords: string[];
   createdAt: Date;
   updatedAt: Date;
 }
