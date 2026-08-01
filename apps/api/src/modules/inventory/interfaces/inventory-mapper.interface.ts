@@ -1,4 +1,8 @@
-import type { InventoryItemResponseDto, InventoryMovementResponseDto } from "../dto";
+import type {
+  InventoryItemResponseDto,
+  InventoryMovementResponseDto,
+  TransferStockResponseDto,
+} from "../dto";
 import type { InventoryItem, InventoryMovement } from "../types";
 
 /**
@@ -11,4 +15,9 @@ export interface InventoryMapper {
   toResponseDto(item: InventoryItem): InventoryItemResponseDto;
   toResponseList(items: InventoryItem[]): InventoryItemResponseDto[];
   toMovementResponseDto(movement: InventoryMovement): InventoryMovementResponseDto;
+  toMovementResponseList(movements: InventoryMovement[]): InventoryMovementResponseDto[];
+  toTransferResponseDto(
+    source: InventoryItem,
+    destination: InventoryItem,
+  ): TransferStockResponseDto;
 }

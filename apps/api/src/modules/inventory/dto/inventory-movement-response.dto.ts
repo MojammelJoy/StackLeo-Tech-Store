@@ -6,5 +6,6 @@ export interface InventoryMovementResponseDto {
   type: InventoryMovementType;
   quantity: number;
   reason: string | null;
+  relatedItemId: string | null;
   createdAt: Date;
 }

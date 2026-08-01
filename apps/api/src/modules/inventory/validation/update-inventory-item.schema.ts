@@ -4,19 +4,15 @@ import { INVENTORY_STATUSES } from "../constants";
 import { nonNegativeQuantitySchema } from "../schemas";
 
 /**
- * Deliberately excludes `sku`/`warehouseId` — see `UpdateInventoryItemInput`'s
- * comment in `types/inventory.types.ts` for why. Also deliberately does
- * NOT re-apply the create schema's "reserved <= quantity" `.refine()`:
- * a partial update may touch only one of the two fields, and checking
- * the invariant correctly would require reading the item's current
- * persisted values — something validation-layer code has no business
- * doing. That check belongs to a future concrete service implementation,
- * which has the current record to check against.
+ * Deliberately excludes `sku`/`warehouseId` (identity fields — see
+ * `UpdateInventoryItemInput`'s comment in `types/inventory.types.ts`)
+ * and `quantity`/`reservedQuantity` (every quantity change must go
+ * through a movement-tracked operation — see that same comment for
+ * why). Only `lowStockThreshold` and `status` are genuinely
+ * general-purpose attribute edits.
  */
 export const updateInventoryItemSchema = z
   .object({
-    quantity: nonNegativeQuantitySchema,
-    reservedQuantity: nonNegativeQuantitySchema,
     lowStockThreshold: nonNegativeQuantitySchema,
     status: z.enum([
       INVENTORY_STATUSES.IN_STOCK,
