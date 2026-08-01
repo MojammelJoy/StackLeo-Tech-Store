@@ -1,3 +1,10 @@
 export type { CreateProductDto } from "./create-product.dto";
-export type { ProductResponseDto } from "./product-response.dto";
+export type { CreateProductVariantDto } from "./create-product-variant.dto";
+export type { ProductResponseDto, ProductSummaryResponseDto } from "./product-response.dto";
+export type { ProductSpecificationResponseDto } from "./product-specification-response.dto";
+export type { ProductVariantResponseDto } from "./product-variant-response.dto";
+export type { ReplaceProductSpecificationsDto } from "./replace-product-specifications.dto";
 export type { UpdateProductDto } from "./update-product.dto";
+export type { UpdateProductStatusDto } from "./update-product-status.dto";
+export type { UpdateProductVariantDto } from "./update-product-variant.dto";
+export type { UpdateProductVisibilityDto } from "./update-product-visibility.dto";

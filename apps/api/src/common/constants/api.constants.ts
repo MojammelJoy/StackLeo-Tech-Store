@@ -24,4 +24,11 @@ export const QUERY_PARAM_KEYS = {
   LIMIT: "limit",
   SORT: "sort",
   SEARCH: "search",
+  CURSOR: "cursor",
+  /** Selects which pagination style a list endpoint uses for this
+   * request — `"page"` (the default) or `"cursor"`. Explicit rather than
+   * inferred from the presence of `cursor` alone, since a cursor-mode
+   * client's very first request (no `cursor` yet) would otherwise be
+   * indistinguishable from a page-mode request. */
+  PAGINATION_TYPE: "paginationType",
 } as const;

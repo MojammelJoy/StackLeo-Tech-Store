@@ -1,2 +1,12 @@
 export { createProductSchema } from "./create-product.schema";
+export { createProductVariantSchema } from "./create-product-variant.schema";
+export { productIdParamsSchema } from "./product-id-params.schema";
+export { productSlugParamsSchema } from "./product-slug-params.schema";
+export { productSpecificationItemSchema } from "./product-specification-item.schema";
+export { productVariantAttributesSchema } from "./product-variant-attributes.schema";
+export { productVariantParamsSchema } from "./product-variant-params.schema";
+export { replaceProductSpecificationsSchema } from "./replace-product-specifications.schema";
 export { updateProductSchema } from "./update-product.schema";
+export { updateProductStatusSchema } from "./update-product-status.schema";
+export { updateProductVariantSchema } from "./update-product-variant.schema";
+export { updateProductVisibilitySchema } from "./update-product-visibility.schema";

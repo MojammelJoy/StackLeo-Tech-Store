@@ -168,3 +168,93 @@ model EmailChangeToken {
   @@index([userId])
   @@map("email_change_tokens")
 }
+
+/// The persisted product catalog entry. `status`/`visibility` are plain
+/// strings (see `User.roles`'s doc comment for the same rationale) —
+/// `modules/product`'s `PRODUCT_STATUSES`/`PRODUCT_VISIBILITIES` own the
+/// actual vocabulary, so adding a value never requires a migration.
+/// `categoryId` is a bare foreign-key-shaped field with no relation —
+/// category CRUD is explicitly out of scope for the Product API: this
+/// column exists so a future category module can attach to already-
+/// tagged products without a data migration, not so this module can
+/// join against it. Soft-deleted via `deletedAt` rather than a hard
+/// `DELETE`, so a product's variants/specifications — and any future
+/// order line referencing it — never dangle.
+model Product {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  description String?
+  sku         String   @unique
+  /// Minor currency unit (e.g. cents for USD) — avoids floating-point
+  /// rounding, matching `ProductVariant.price`.
+  price       Int
+  /// ISO 4217 currency code, e.g. "USD".
+  currency    String
+  status      String   @default("draft")
+  visibility  String   @default("public")
+  categoryId  String?  @map("category_id")
+  tags        String[] @default([])
+
+  seoTitle       String?  @map("seo_title")
+  seoDescription String?  @map("seo_description")
+  seoKeywords    String[] @default([]) @map("seo_keywords")
+
+  deletedAt DateTime? @map("deleted_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  variants       ProductVariant[]
+  specifications ProductSpecification[]
+
+  @@index([status])
+  @@index([visibility])
+  @@index([categoryId])
+  @@index([deletedAt])
+  @@map("products")
+}
+
+/// A purchasable variation of a `Product` (e.g. a specific color/size
+/// combination) — its own SKU, optional price/currency override (`null`
+/// means "use the parent product's price"), and freeform `attributes`.
+/// No stock/quantity field: inventory management is explicitly out of
+/// scope for the Product API.
+model ProductVariant {
+  id         String   @id @default(cuid())
+  productId  String   @map("product_id")
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  sku        String   @unique
+  name       String
+  /// Variant-defining key/value pairs, e.g. `{"color": "Red", "size": "M"}`
+  /// — freeform because the attribute set varies too much across a
+  /// catalog to model as fixed columns without a category system, which
+  /// is out of scope here.
+  attributes Json
+  price      Int?
+  currency   String?
+  isActive   Boolean  @default(true) @map("is_active")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  @@index([productId])
+  @@map("product_variants")
+}
+
+/// A single display specification row (e.g. "Material" -> "Aluminum")
+/// attached to a `Product`. `sortOrder` controls display order on a
+/// product page. Unique per `(productId, key)` — a product never has two
+/// rows for the same spec key.
+model ProductSpecification {
+  id        String   @id @default(cuid())
+  productId String   @map("product_id")
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  key       String
+  value     String
+  sortOrder Int      @default(0) @map("sort_order")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([productId, key])
+  @@index([productId])
+  @@map("product_specifications")
+}
