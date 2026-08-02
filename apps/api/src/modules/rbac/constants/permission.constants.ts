@@ -1,7 +1,7 @@
 /**
  * The complete permission vocabulary, `resource:action` by convention.
- * Scoped to `user`/`product`/`category`/`brand`/`inventory` (the domain
- * modules that exist) and to RBAC's own administration.
+ * Scoped to `user`/`product`/`category`/`brand`/`inventory`/`media`
+ * (the domain modules that exist) and to RBAC's own administration.
  */
 export const PERMISSIONS = {
   USER_READ: "user:read",
@@ -35,6 +35,15 @@ export const PERMISSIONS = {
    * so it's gated by its own, more sensitive permission rather than
    * folded into general update. */
   INVENTORY_ADJUST: "inventory:adjust",
+  /** Like `PRODUCT_READ`/`CATEGORY_READ`/`BRAND_READ`: gates seeing a
+   * media asset whose `status` isn't `READY` (pending/failed/deleted) —
+   * see `MediaService.canBypassStatusScope`. An anonymous or unprivileged
+   * caller still sees every `READY` asset (product images on a public
+   * storefront page need no permission at all). */
+  MEDIA_READ: "media:read",
+  MEDIA_CREATE: "media:create",
+  MEDIA_UPDATE: "media:update",
+  MEDIA_DELETE: "media:delete",
 } as const;
 
 export type Permission = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];

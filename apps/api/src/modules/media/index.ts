@@ -1,12 +1,17 @@
 /**
- * Reusable media infrastructure: domain types, DTOs + Zod validation
- * schemas (built from reusable field-level schemas in `schemas/`), the
- * repository contract (plus its currently-skeletal Prisma
- * implementation), a skeleton service, the storage-provider abstraction
- * (Cloudinary/local disk skeletons — see `providers/`), and the mapper/
- * file-metadata/MIME-type/validation utilities that support it all. No
- * controllers, routes, upload endpoints, or actual upload/Cloudinary
- * implementation live here.
+ * The Media API: upload (single + multiple), get by id, list
+ * (pagination, filtering, sorting, search), update metadata, soft
+ * delete + restore, and owner association lookup (Product/Brand/
+ * Category/User) — a real, working feature, not reusable-
+ * infrastructure-only scaffolding. Built on `common/`, `database/`,
+ * `logger/`, `errors/`, and `modules/rbac` (permission-gating every
+ * mutation and every non-`READY` read). Only local-disk storage is a
+ * real, working `UploadProvider` — `CloudinaryUploadProvider` remains
+ * this foundation's original skeleton (real Cloudinary/S3 integration,
+ * image optimization, and CDN integration are all explicitly out of
+ * scope). Deliberately excludes product/category/brand CRUD and every
+ * other domain's business logic (cart, wishlist, reviews, orders,
+ * payment) — those stay out of this module.
  */
 export {
   DOCUMENT_MIME_TYPES,
@@ -17,6 +22,7 @@ export {
   MEDIA_ALT_TEXT_MAX_LENGTH,
   MEDIA_FILE_NAME_MAX_LENGTH,
   MEDIA_FILTERABLE_FIELDS,
+  MEDIA_MAX_BULK_UPLOAD_FILES,
   MEDIA_OWNER_TYPES,
   MEDIA_PURPOSE_MAX_SIZE_BYTES,
   MEDIA_PURPOSE_MIME_TYPES,
@@ -33,14 +39,28 @@ export type {
   FileMetadata,
   MediaAsset,
   UpdateMediaAssetInput,
+  UploadableFile,
 } from "./types";
 
 export { altTextSchema, fileNameSchema, mimeTypeSchema } from "./schemas";
 
-export { createMediaAssetSchema, updateMediaAssetSchema } from "./validation";
-export type { CreateMediaAssetDto, MediaAssetResponseDto, UpdateMediaAssetDto } from "./dto";
+export {
+  createMediaAssetSchema,
+  mediaIdParamsSchema,
+  mediaOwnerParamsSchema,
+  updateMediaAssetSchema,
+  uploadMediaFieldsSchema,
+} from "./validation";
+export type {
+  CreateMediaAssetDto,
+  MediaAssetResponseDto,
+  UpdateMediaAssetDto,
+  UploadMediaFieldsDto,
+} from "./dto";
 
 export type { MediaFilterOptions, MediaMapper } from "./interfaces";
+
+export { uploadMultipleFiles, uploadSingleFile } from "./middleware";
 
 export { CloudinaryUploadProvider, LocalUploadProvider } from "./providers";
 export type {
@@ -52,6 +72,7 @@ export type {
 } from "./providers";
 
 export {
+  extractImageDimensions,
   formatFileSize,
   getAllowedMimeTypes,
   getFileExtension,
@@ -60,9 +81,13 @@ export {
   sanitizeFileName,
   validateFileForPurpose,
 } from "./mapper";
-export type { FileValidationResult } from "./mapper";
+export type { FileValidationResult, ImageDimensions } from "./mapper";
 
 export { MediaPrismaRepository } from "./repository";
 export type { MediaRepository } from "./repository";
 
 export { MediaService } from "./service";
+
+export { MediaController } from "./controller";
+
+export { mediaRouter } from "./routes";

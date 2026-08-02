@@ -405,3 +405,57 @@ model InventoryMovement {
   @@index([createdAt])
   @@map("inventory_movements")
 }
+
+/// The persisted metadata *about* an uploaded file — never the file
+/// bytes themselves, which live wherever `provider` says (see
+/// `modules/media`'s `UploadProvider`). `ownerType`/`ownerId` are bare
+/// foreign-key-shaped fields, not relations — none of `Product`/
+/// `Brand`/`Category`/`User` enforce a link back to this table either,
+/// mirroring how `Product.categoryId` already relates to `Category`
+/// only by convention.
+///
+/// `status` doubles as this model's soft-delete marker: `DELETED` is
+/// already part of the upload lifecycle this foundation defined
+/// (`PENDING` → `READY` | `FAILED`, or → `DELETED`), so
+/// `service/media.service.ts`'s `delete`/`restore` just transition
+/// `status` between `DELETED` and `READY` rather than introducing a
+/// second, redundant `deletedAt` column alongside it.
+model MediaAsset {
+  id        String @id @default(cuid())
+  fileName  String @map("file_name")
+  mimeType  String @map("mime_type")
+  sizeBytes Int    @map("size_bytes")
+  url       String
+
+  /// Which storage backend persisted this file, and that backend's own
+  /// reference to it (e.g. a local file key) — together enough for
+  /// `UploadProvider.delete`/`getUrl` to act on this asset later
+  /// without this module needing to know provider-specific details.
+  provider    String
+  providerRef String @map("provider_ref")
+
+  purpose   String
+  ownerType String? @map("owner_type")
+  ownerId   String? @map("owner_id")
+
+  altText String? @map("alt_text")
+
+  /// Present for images; `null` for documents/unrecognized formats —
+  /// see `mapper/image-dimension.utils.ts`.
+  width           Int?
+  height          Int?
+  /// Present for videos only — never populated by this API (no video
+  /// duration extraction is implemented), reserved for a future
+  /// provider that reports it.
+  durationSeconds Int? @map("duration_seconds")
+
+  status String @default("pending")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([ownerType, ownerId])
+  @@index([purpose])
+  @@index([status])
+  @@map("media_assets")
+}

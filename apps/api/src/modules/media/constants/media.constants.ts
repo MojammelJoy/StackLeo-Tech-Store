@@ -1,6 +1,11 @@
 export const MEDIA_FILE_NAME_MAX_LENGTH = 255;
 export const MEDIA_ALT_TEXT_MAX_LENGTH = 300;
 
+/** How many files a single `POST /media/upload-multiple` request may
+ * contain — bounds both `middleware/upload.middleware.ts`'s multer
+ * field limit and `service/media.service.ts`'s own check. */
+export const MEDIA_MAX_BULK_UPLOAD_FILES = 10;
+
 /**
  * What a media asset is used for. Deliberately spans every media-bearing
  * concept this monorepo's other foundations describe (product, brand,

@@ -32,6 +32,10 @@ export const ROLE_PERMISSIONS: RolePermissionMap = {
     PERMISSIONS.INVENTORY_CREATE,
     PERMISSIONS.INVENTORY_UPDATE,
     PERMISSIONS.INVENTORY_ADJUST,
+    PERMISSIONS.MEDIA_READ,
+    PERMISSIONS.MEDIA_CREATE,
+    PERMISSIONS.MEDIA_UPDATE,
+    PERMISSIONS.MEDIA_DELETE,
   ],
   [ROLES.ADMIN]: [
     PERMISSIONS.USER_READ,
@@ -54,16 +58,21 @@ export const ROLE_PERMISSIONS: RolePermissionMap = {
     PERMISSIONS.INVENTORY_CREATE,
     PERMISSIONS.INVENTORY_UPDATE,
     PERMISSIONS.INVENTORY_ADJUST,
+    PERMISSIONS.MEDIA_READ,
+    PERMISSIONS.MEDIA_CREATE,
+    PERMISSIONS.MEDIA_UPDATE,
+    PERMISSIONS.MEDIA_DELETE,
   ],
-  // `PRODUCT_READ`/`CATEGORY_READ`/`BRAND_READ` are deliberately absent
-  // here: each gates seeing its module's non-`ACTIVE`/non-`PUBLIC`/
-  // soft-deleted rows (see `ProductService`/`CategoryService`/
-  // `BrandService`'s `canBypassVisibilityScope`), a staff-only
-  // capability. A member's catalog visibility is otherwise identical to
-  // an anonymous visitor's — browsing the public catalog needs no
-  // permission at all. `INVENTORY_*` is absent entirely: unlike the
-  // catalog modules, inventory has no public-facing subset at all (see
-  // `PERMISSIONS.INVENTORY_READ`'s doc comment) — a member has no
+  // `PRODUCT_READ`/`CATEGORY_READ`/`BRAND_READ`/`MEDIA_READ` are
+  // deliberately absent here: each gates seeing its module's non-
+  // `ACTIVE`/non-`PUBLIC`/non-`READY`/soft-deleted rows (see
+  // `ProductService`/`CategoryService`/`BrandService`/`MediaService`'s
+  // `canBypass*Scope`), a staff-only capability. A member's catalog/
+  // media visibility is otherwise identical to an anonymous visitor's
+  // — browsing public products, categories, brands, and ready media
+  // needs no permission at all. `INVENTORY_*` is absent entirely:
+  // unlike those modules, inventory has no public-facing subset at all
+  // (see `PERMISSIONS.INVENTORY_READ`'s doc comment) — a member has no
   // inventory access whatsoever, the same as an anonymous caller.
   [ROLES.MEMBER]: [PERMISSIONS.USER_READ],
 };
