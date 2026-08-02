@@ -1,5 +1,5 @@
 import type { MediaOwnerType, MediaPurpose, StorageProviderName } from "../constants";
-import type { FileMetadata } from "../types";
+import type { UploadableFile } from "../types";
 
 export interface UploadOptions {
   purpose: MediaPurpose;
@@ -31,7 +31,7 @@ export interface UploadResult {
  */
 export interface UploadProvider {
   readonly name: StorageProviderName;
-  upload(file: FileMetadata, options: UploadOptions): Promise<UploadResult>;
+  upload(file: UploadableFile, options: UploadOptions): Promise<UploadResult>;
   delete(providerRef: string): Promise<void>;
   getUrl(providerRef: string): string;
 }

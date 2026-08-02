@@ -28,6 +28,14 @@ export const envSchema = z.object({
     ),
 
   LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"]).default("info"),
+
+  /** Absolute-or-relative filesystem path `LocalUploadProvider` writes
+   * uploaded files under — see `modules/media`'s `providers/`. */
+  MEDIA_LOCAL_STORAGE_DIR: z.string().min(1).default("./uploads"),
+  /** URL path segment those files are served back from — `app.ts`
+   * mounts `express.static` here, and `LocalUploadProvider` builds each
+   * asset's public `url` by prefixing its storage key with this path. */
+  MEDIA_LOCAL_PUBLIC_URL_PATH: z.string().min(1).default("/uploads"),
 });
 
 export type Env = z.infer<typeof envSchema>;

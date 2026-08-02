@@ -1,7 +1,7 @@
 import { NotImplementedError } from "../../../errors";
 import { STORAGE_PROVIDERS } from "../constants";
 
-import type { FileMetadata } from "../types";
+import type { UploadableFile } from "../types";
 import type { UploadOptions, UploadProvider, UploadResult } from "./upload-provider.interface";
 
 /**
@@ -30,7 +30,7 @@ export class CloudinaryUploadProvider implements UploadProvider {
 
   constructor(private readonly config: CloudinaryProviderConfig) {}
 
-  async upload(file: FileMetadata, _options: UploadOptions): Promise<UploadResult> {
+  async upload(file: UploadableFile, _options: UploadOptions): Promise<UploadResult> {
     throw new NotImplementedError(
       `CloudinaryUploadProvider.upload is not implemented yet (fileName: ${file.fileName})`,
     );

@@ -39,6 +39,11 @@ export const config = {
   logger: {
     level: env.LOG_LEVEL,
   },
+
+  media: {
+    localStorageDir: env.MEDIA_LOCAL_STORAGE_DIR,
+    localPublicUrlPath: env.MEDIA_LOCAL_PUBLIC_URL_PATH,
+  },
 } as const;
 
 export type Config = typeof config;

@@ -32,6 +32,12 @@ export function createApp(): Express {
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
 
+  // Serves files `modules/media`'s `LocalUploadProvider` writes to disk
+  // back out at the same path it builds each asset's public `url` from
+  // — see `config/index.ts`'s `media.localPublicUrlPath`/
+  // `media.localStorageDir`.
+  app.use(config.media.localPublicUrlPath, express.static(config.media.localStorageDir));
+
   registerRoutes(app);
 
   app.use(notFoundHandler);
