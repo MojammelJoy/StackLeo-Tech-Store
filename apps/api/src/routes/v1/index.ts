@@ -6,6 +6,7 @@ import { categoryRouter } from "../../modules/category";
 import { inventoryRouter } from "../../modules/inventory";
 import { mediaRouter } from "../../modules/media";
 import { productRouter } from "../../modules/product";
+import { searchRouter } from "../../modules/search";
 import { UserPrismaRepository, createUserRouter } from "../../modules/user";
 
 /**
@@ -52,3 +53,4 @@ v1Router.use("/categories", categoryRouter);
 v1Router.use("/brands", brandRouter);
 v1Router.use("/inventory", inventoryRouter);
 v1Router.use("/media", mediaRouter);
+v1Router.use("/search", searchRouter);

@@ -39,6 +39,21 @@ export type SearchProviderName = (typeof SEARCH_PROVIDERS)[keyof typeof SEARCH_P
 export const SEARCH_KEYWORD_MIN_LENGTH = 1;
 export const SEARCH_KEYWORD_MAX_LENGTH = 200;
 
+/**
+ * The literal `status`/`visibility` values that make a Product/Category/
+ * Brand row publicly visible — identical strings across all three
+ * modules (`PRODUCT_STATUSES.ACTIVE`/`PRODUCT_VISIBILITIES.PUBLIC`,
+ * `CATEGORY_STATUSES.ACTIVE`/`CATEGORY_VISIBILITIES.PUBLIC`,
+ * `BRAND_STATUSES.ACTIVE`/`BRAND_VISIBILITIES.PUBLIC`). Duplicated here
+ * as bare strings rather than importing those modules' constants, the
+ * same decoupling this foundation applies everywhere else (see this
+ * file's own doc comment on `SEARCH_ENTITY_TYPES`) — `SearchService`
+ * uses these to force non-bypassing callers down to only public,
+ * active rows.
+ */
+export const SEARCH_VISIBLE_STATUS = "active";
+export const SEARCH_VISIBLE_VISIBILITY = "public";
+
 /** Below this length, autocomplete has too little signal to suggest anything useful. */
 export const AUTOCOMPLETE_KEYWORD_MIN_LENGTH = 2;
 export const AUTOCOMPLETE_MAX_SUGGESTIONS = 10;

@@ -10,5 +10,7 @@ export {
   SEARCH_KEYWORD_MAX_LENGTH,
   SEARCH_KEYWORD_MIN_LENGTH,
   SEARCH_PROVIDERS,
+  SEARCH_VISIBLE_STATUS,
+  SEARCH_VISIBLE_VISIBILITY,
 } from "./search.constants";
 export type { SearchEntityType, SearchProviderName } from "./search.constants";

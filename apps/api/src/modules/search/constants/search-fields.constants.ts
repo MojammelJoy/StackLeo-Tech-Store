@@ -18,8 +18,19 @@ export const SEARCH_SORTABLE_FIELDS_BY_ENTITY: Record<SearchEntityType, readonly
   [SEARCH_ENTITY_TYPES.BRAND]: ["name", "createdAt", "updatedAt"],
 };
 
+/**
+ * `brandId` was added once `Product.brandId` (a bare FK-shaped field,
+ * same convention as `categoryId`) existed to query against — see
+ * `prisma/schema.prisma`'s `Product` model. `status`/`visibility` are
+ * still accepted here so a privileged caller (one who passes
+ * `SearchService`'s per-entity visibility scope) can narrow further,
+ * e.g. to only draft products — an unprivileged/anonymous caller's
+ * values for these two fields are always overridden by `SearchService`
+ * regardless of what it requests, so exposing them here is never a
+ * visibility leak.
+ */
 export const SEARCH_FILTERABLE_FIELDS_BY_ENTITY: Record<SearchEntityType, readonly string[]> = {
-  [SEARCH_ENTITY_TYPES.PRODUCT]: ["categoryId", "status"],
-  [SEARCH_ENTITY_TYPES.CATEGORY]: ["parentId", "status"],
-  [SEARCH_ENTITY_TYPES.BRAND]: ["status"],
+  [SEARCH_ENTITY_TYPES.PRODUCT]: ["categoryId", "brandId", "status", "visibility"],
+  [SEARCH_ENTITY_TYPES.CATEGORY]: ["parentId", "status", "visibility"],
+  [SEARCH_ENTITY_TYPES.BRAND]: ["status", "visibility"],
 };

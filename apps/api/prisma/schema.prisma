@@ -194,6 +194,9 @@ model Product {
   status      String   @default("draft")
   visibility  String   @default("public")
   categoryId  String?  @map("category_id")
+  /// Bare FK-shaped field, same convention as `categoryId` — no Prisma
+  /// relation to `Brand` (mirrors why `categoryId` has none either).
+  brandId     String?  @map("brand_id")
   tags        String[] @default([])
 
   seoTitle       String?  @map("seo_title")
@@ -210,6 +213,7 @@ model Product {
   @@index([status])
   @@index([visibility])
   @@index([categoryId])
+  @@index([brandId])
   @@index([deletedAt])
   @@map("products")
 }
