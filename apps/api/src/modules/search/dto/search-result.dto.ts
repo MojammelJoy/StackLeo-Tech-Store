@@ -5,6 +5,7 @@ export interface SearchResultDto {
   id: string;
   entityType: SearchEntityType;
   title: string;
+  slug: string;
   description: string | null;
   imageUrl: string | null;
   score: number;

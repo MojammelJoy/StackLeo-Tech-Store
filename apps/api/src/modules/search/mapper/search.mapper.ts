@@ -7,6 +7,7 @@ function toResultDto(item: SearchResultItem): SearchResultDto {
     id: item.id,
     entityType: item.entityType,
     title: item.title,
+    slug: item.slug,
     description: item.description,
     imageUrl: item.imageUrl,
     score: item.score,

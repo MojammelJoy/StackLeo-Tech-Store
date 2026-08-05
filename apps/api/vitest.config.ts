@@ -17,6 +17,13 @@ export default defineConfig({
     environment: "node",
     globalSetup: ["./src/testing/setup/global-setup.ts"],
     env: { ...TEST_ENV_DEFAULTS },
+    // `tsc -b`'s incremental build (the root `pnpm typecheck`) emits
+    // compiled output to `dist/`, including compiled `*.test.js` files
+    // unless `tsconfig.json` excludes test sources from the build (see
+    // that file's `exclude`) — this is defense in depth against Vitest
+    // ever double-running a test from both its `.ts` source and a stale
+    // compiled `.js` copy left over in `dist/`.
+    exclude: ["**/node_modules/**", "**/.git/**", "**/dist/**"],
     // This app is still in its foundation phase — every module built so
     // far is reusable infrastructure (types, DTOs, skeleton services),
     // not yet the business logic real tests would exercise (see

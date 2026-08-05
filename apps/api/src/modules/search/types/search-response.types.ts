@@ -9,6 +9,10 @@ export interface SearchResultItem {
   id: string;
   entityType: SearchEntityType;
   title: string;
+  /** The matched row's own slug — `Product.slug`/`Category.slug`/
+   * `Brand.slug` — so a caller can link straight to it (e.g.
+   * `GET /products/slug/:slug`) without a second lookup by `id`. */
+  slug: string;
   description: string | null;
   imageUrl: string | null;
   /**
