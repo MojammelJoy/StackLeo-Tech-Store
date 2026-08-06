@@ -1,2 +1,2 @@
 export { AddressPrismaRepository } from "./address.repository.prisma";
-export type { AddressRepository } from "./address.repository";
+export type { AddressLookupOptions, AddressRepository } from "./address.repository";

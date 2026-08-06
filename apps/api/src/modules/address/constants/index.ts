@@ -15,5 +15,6 @@ export {
   ADDRESS_RECIPIENT_NAME_MAX_LENGTH,
   ADDRESS_SORTABLE_FIELDS,
   ADDRESS_TYPES,
+  DEFAULT_ADDRESS_CONTEXTS,
 } from "./address.constants";
-export type { AddressLabel, AddressType } from "./address.constants";
+export type { AddressLabel, AddressType, DefaultAddressContext } from "./address.constants";

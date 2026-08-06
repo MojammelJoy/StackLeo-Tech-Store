@@ -36,4 +36,26 @@ export const ADDRESS_LABELS = {
 export type AddressLabel = (typeof ADDRESS_LABELS)[keyof typeof ADDRESS_LABELS];
 
 export const ADDRESS_SORTABLE_FIELDS = ["createdAt", "updatedAt"] as const;
-export const ADDRESS_FILTERABLE_FIELDS = ["type", "label", "isDefault", "country"] as const;
+export const ADDRESS_FILTERABLE_FIELDS = [
+  "type",
+  "label",
+  "isDefaultShipping",
+  "isDefaultBilling",
+  "country",
+] as const;
+
+/** Which independent "default" slot an operation targets —
+ * `AddressRepository.findDefaultByUserId`/`unsetDefaultForUser`/
+ * `setDefaultForUser` and `AddressService.setDefaultShipping`/
+ * `setDefaultBilling` are all parameterized by this rather than
+ * overloading `AddressType`, since `type: "both"` is a valid address
+ * type but never a valid default *context* — see `Address`'s doc
+ * comment in `types/address.types.ts` for why shipping/billing defaults
+ * are independent in the first place. */
+export const DEFAULT_ADDRESS_CONTEXTS = {
+  SHIPPING: "shipping",
+  BILLING: "billing",
+} as const;
+
+export type DefaultAddressContext =
+  (typeof DEFAULT_ADDRESS_CONTEXTS)[keyof typeof DEFAULT_ADDRESS_CONTEXTS];
