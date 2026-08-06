@@ -34,11 +34,24 @@ export interface WishlistRepository {
   create(data: CreateWishlistInput): Promise<Wishlist>;
   update(id: string, data: UpdateWishlistInput): Promise<Wishlist>;
   delete(id: string): Promise<void>;
+  /** Atomically finds `userId`'s active wishlist, creating one inside
+   * the same transaction when none exists yet — what
+   * `WishlistService`'s every "get/mutate my wishlist" entry point
+   * resolves "which wishlist" through, instead of a separate find-then-
+   * create round trip from the service (see this method's
+   * implementation for why that matters under concurrency). */
+  findOrCreateActiveByUserId(userId: string): Promise<Wishlist>;
 
   findItemsByWishlistId(
     wishlistId: string,
     query: ParsedQuery,
   ): Promise<PaginatedResult<WishlistItem>>;
+  /** Every item, unpaginated — what `WishlistService`'s "get current
+   * user's wishlist" (the small, full-view response — see
+   * `dto/wishlist-response.dto.ts`'s doc comment) uses, as distinct
+   * from the paginated/sortable/filterable/searchable
+   * `findItemsByWishlistId` above. */
+  findAllItemsByWishlistId(wishlistId: string): Promise<WishlistItem[]>;
   findItemById(itemId: string): Promise<WishlistItem | null>;
   findItemByProductId(wishlistId: string, productId: string): Promise<WishlistItem | null>;
   addItem(data: CreateWishlistItemInput): Promise<WishlistItem>;
