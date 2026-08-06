@@ -1,11 +1,11 @@
 /**
- * Reusable address infrastructure: domain types, DTOs (including
- * billing/shipping-narrowed variants) + Zod validation schemas (built
- * from reusable field-level schemas in `schemas/`), the repository
- * contract (plus its currently-skeletal Prisma implementation), a
- * skeleton service, and the mapper/utility helpers that support it all.
- * No controllers, routes, CRUD implementation, or business logic
- * (shipping/order/payment concerns) live here.
+ * The Address API: domain types, DTOs (including billing/shipping-
+ * narrowed variants) + Zod validation schemas (built from reusable
+ * field-level schemas in `schemas/`), the repository contract plus its
+ * Prisma implementation, the mapper/utility helpers that support it
+ * all, and the controller/routes exposing it at `/api/v1/addresses`.
+ * Authenticated users only — shipping-cost/delivery-estimation/order/
+ * payment concerns are explicitly out of scope.
  */
 export {
   ADDRESS_CITY_MAX_LENGTH,
@@ -24,14 +24,15 @@ export {
   ADDRESS_RECIPIENT_NAME_MAX_LENGTH,
   ADDRESS_SORTABLE_FIELDS,
   ADDRESS_TYPES,
+  DEFAULT_ADDRESS_CONTEXTS,
 } from "./constants";
-export type { AddressLabel, AddressType } from "./constants";
+export type { AddressLabel, AddressType, DefaultAddressContext } from "./constants";
 
 export type { Address, CreateAddressInput, UpdateAddressInput } from "./types";
 
 export { countryCodeSchema, latitudeSchema, longitudeSchema, postalCodeSchema } from "./schemas";
 
-export { createAddressSchema, updateAddressSchema } from "./validation";
+export { addressIdParamsSchema, createAddressSchema, updateAddressSchema } from "./validation";
 export type {
   AddressResponseDto,
   BillingAddressDto,
@@ -53,6 +54,10 @@ export {
 export { addressMapper } from "./mapper";
 
 export { AddressPrismaRepository } from "./repository";
-export type { AddressRepository } from "./repository";
+export type { AddressLookupOptions, AddressRepository } from "./repository";
 
 export { AddressService } from "./service";
+
+export { AddressController } from "./controller";
+
+export { addressRouter } from "./routes";

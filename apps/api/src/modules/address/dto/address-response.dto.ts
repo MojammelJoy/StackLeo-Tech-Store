@@ -10,7 +10,8 @@ export interface AddressResponseDto {
   id: string;
   type: AddressType;
   label: AddressLabel;
-  isDefault: boolean;
+  isDefaultShipping: boolean;
+  isDefaultBilling: boolean;
   recipientName: string;
   phone: string | null;
   line1: string;

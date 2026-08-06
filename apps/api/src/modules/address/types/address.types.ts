@@ -1,22 +1,28 @@
 import type { AddressLabel, AddressType } from "../constants";
 
 /**
- * The persisted Address domain entity. Not a Prisma-generated type — no
- * `Address` model exists in `prisma/schema.prisma` yet (out of scope
- * for this foundation). Always owned by a user — unlike
+ * The persisted Address domain entity. Always owned by a user — unlike
  * `modules/cart`/`modules/wishlist`, there's no guest concept here (an
  * address book only makes sense once there's an account to attach it
  * to). `district` is nullable since not every country's address format
  * uses one; `division`/`city`/`postalCode`/`country` are not, since
  * those are close to universal.
+ *
+ * `isDefaultShipping`/`isDefaultBilling` are two independent flags, not
+ * one shared `isDefault` — a `type: "both"` address can be the default
+ * for one context without the other, which a single flag can't
+ * represent (see `prisma/schema.prisma`'s `Address` doc comment for the
+ * full reasoning). Both are set only via
+ * `AddressService.setDefaultShipping`/`setDefaultBilling`, never a
+ * direct field write — see `UpdateAddressInput`'s comment.
  */
 export interface Address {
   id: string;
   userId: string;
   type: AddressType;
   label: AddressLabel;
-  /** Set via `AddressService.setDefault`, never a direct field write — see `UpdateAddressInput`'s comment. */
-  isDefault: boolean;
+  isDefaultShipping: boolean;
+  isDefaultBilling: boolean;
   recipientName: string;
   phone: string | null;
   line1: string;
@@ -30,6 +36,8 @@ export interface Address {
   /** Future support — see `interfaces/shippable-address.interface.ts` and `utils/coordinates.util.ts`. Nothing in this foundation geocodes an address or uses these for a real shipping calculation. */
   latitude: number | null;
   longitude: number | null;
+  /** Soft-delete marker — see `AddressService.delete`/`restore`. */
+  deletedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -52,11 +60,12 @@ export interface CreateAddressInput {
 }
 
 /**
- * Deliberately excludes `isDefault`: making an address the default is a
- * distinct operation (`AddressService.setDefault`, which must also
- * unset the previous default) from editing the address itself,
- * mirroring why `modules/wishlist`'s `UpdateWishlistInput` excludes
- * `shareToken`.
+ * Deliberately excludes `isDefaultShipping`/`isDefaultBilling`: making
+ * an address a default is a distinct operation
+ * (`AddressService.setDefaultShipping`/`setDefaultBilling`, which must
+ * also unset the previous default in that context) from editing the
+ * address itself, mirroring why `modules/wishlist`'s
+ * `UpdateWishlistInput` excludes `shareToken`.
  */
 export interface UpdateAddressInput {
   type?: AddressType;

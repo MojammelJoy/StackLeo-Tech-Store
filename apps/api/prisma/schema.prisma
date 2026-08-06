@@ -577,3 +577,64 @@ model WishlistItem {
   @@index([wishlistId])
   @@map("wishlist_items")
 }
+
+/// A saved entry in a user's address book. Always user-owned — unlike
+/// `Cart`/`Wishlist`, there is no guest concept here (an address book
+/// only makes sense once there's an account to attach it to); `userId`
+/// is still a bare foreign-key-shaped field with no relation, the same
+/// convention every cross-module reference in this schema follows.
+/// `type`/`label` are plain strings for the same reason every other
+/// lifecycle-bearing model here is (see `Product`'s doc comment) —
+/// `modules/address`'s `ADDRESS_TYPES`/`ADDRESS_LABELS` own the
+/// vocabulary.
+///
+/// `isDefaultShipping`/`isDefaultBilling` are deliberately two
+/// independent booleans, not the single `isDefault` flag the module's
+/// foundation originally sketched: a `type: "both"` address can serve
+/// as the default for one context without the other, and a single
+/// shared flag can't represent that — changing just the default
+/// shipping address would have had to blindly clear billing-default
+/// status too whenever they happened to be the same row. Each is
+/// enforced as "at most one `true` per user" by
+/// `modules/address`'s `AddressPrismaRepository.setDefaultForUser`
+/// (unset-then-set in one transaction), never by a database constraint
+/// (a partial unique index would need raw SQL this schema style avoids
+/// elsewhere).
+///
+/// `deletedAt` is this model's soft-delete marker, mirroring `Product`/
+/// `Category`/`Brand`. A deleted address is never left as anyone's
+/// default (see `AddressPrismaRepository.softDelete`, which always
+/// clears both default flags in the same write).
+model Address {
+  id                String  @id @default(cuid())
+  userId            String  @map("user_id")
+  type              String
+  label             String  @default("home")
+  isDefaultShipping Boolean @default(false) @map("is_default_shipping")
+  isDefaultBilling  Boolean @default(false) @map("is_default_billing")
+
+  recipientName String  @map("recipient_name")
+  phone         String?
+  line1         String
+  line2         String?
+  city          String
+  district      String?
+  division      String
+  postalCode    String  @map("postal_code")
+  /// ISO 3166-1 alpha-2, e.g. "US", "BD".
+  country       String
+
+  /// Future support — see `modules/address`'s `ShippableAddress`
+  /// interface. Nothing in this API geocodes an address or uses these
+  /// for a real shipping calculation.
+  latitude  Float?
+  longitude Float?
+
+  deletedAt DateTime? @map("deleted_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  @@index([userId])
+  @@index([deletedAt])
+  @@map("addresses")
+}
