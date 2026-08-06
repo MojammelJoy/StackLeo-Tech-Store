@@ -1,5 +1,10 @@
-import type { OrderItemResponseDto, OrderResponseDto, OrderSummaryDto } from "../dto";
-import type { Order, OrderItem } from "../types";
+import type {
+  OrderItemResponseDto,
+  OrderResponseDto,
+  OrderSummaryDto,
+  OrderTimelineEntryDto,
+} from "../dto";
+import type { Order, OrderItem, OrderStatusHistoryEntry } from "../types";
 
 /**
  * Contract `mapper/order.mapper.ts` implements. Kept separate from
@@ -12,4 +17,6 @@ export interface OrderMapper {
   toItemResponseList(items: OrderItem[]): OrderItemResponseDto[];
   toSummaryDto(order: Order, items: OrderItem[]): OrderSummaryDto;
   toOrderResponseDto(order: Order, items: OrderItem[]): OrderResponseDto;
+  toTimelineEntryDto(entry: OrderStatusHistoryEntry): OrderTimelineEntryDto;
+  toTimelineEntryList(entries: OrderStatusHistoryEntry[]): OrderTimelineEntryDto[];
 }

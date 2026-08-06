@@ -49,3 +49,21 @@ export type FulfillmentStatus = (typeof FULFILLMENT_STATUSES)[keyof typeof FULFI
 
 export const ORDER_SORTABLE_FIELDS = ["createdAt", "updatedAt", "total"] as const;
 export const ORDER_FILTERABLE_FIELDS = ["status", "paymentStatus", "fulfillmentStatus"] as const;
+
+/**
+ * The valid next statuses from each `OrderStatus` — "Support order
+ * status workflow" enforced as data, not scattered `if`s. Only
+ * `COMPLETED` moves to `REFUNDED` (there must be something delivered to
+ * refund; a merely `CANCELLED` order was never fulfilled, so there's
+ * nothing to reverse) — `CANCELLED` and `REFUNDED` are both terminal,
+ * nothing transitions out of either. `utils/order-lifecycle.util.ts`'s
+ * `canTransitionOrderStatus` is the only place this map is read.
+ */
+export const ORDER_STATUS_TRANSITIONS: Record<OrderStatus, readonly OrderStatus[]> = {
+  [ORDER_STATUSES.PENDING]: [ORDER_STATUSES.CONFIRMED, ORDER_STATUSES.CANCELLED],
+  [ORDER_STATUSES.CONFIRMED]: [ORDER_STATUSES.PROCESSING, ORDER_STATUSES.CANCELLED],
+  [ORDER_STATUSES.PROCESSING]: [ORDER_STATUSES.COMPLETED, ORDER_STATUSES.CANCELLED],
+  [ORDER_STATUSES.COMPLETED]: [ORDER_STATUSES.REFUNDED],
+  [ORDER_STATUSES.CANCELLED]: [],
+  [ORDER_STATUSES.REFUNDED]: [],
+};

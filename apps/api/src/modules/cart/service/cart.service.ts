@@ -173,6 +173,20 @@ export class CartService {
     return this.buildCartResponse(cart);
   }
 
+  /** Marks `cartId` `CART_STATUSES.CONVERTED` — what a cart becomes
+   * once `modules/order` turns it into a placed order (see
+   * `CART_STATUSES`'s doc comment, which anticipated exactly this).
+   * Ownership-checked the same as every other mutation here; deliberately
+   * doesn't clear the cart's items — a converted cart's contents remain
+   * as a historical record of what was ordered from it, and
+   * `findByUserId`/`findByGuestToken` only ever resolve the *active*
+   * cart, so a converted cart is never resurfaced as "the" cart again. */
+  async convertCart(cartId: string, actor: AuthenticatedUser | null): Promise<void> {
+    await this.getOwnedCart(cartId, actor);
+    await this.cartRepository.update(cartId, { status: CART_STATUSES.CONVERTED });
+    logger.info({ cartId }, "Cart converted");
+  }
+
   /**
    * Folds `guestCartId`'s items into `actor`'s active cart (creating
    * one first if they don't have one yet), then marks the guest cart

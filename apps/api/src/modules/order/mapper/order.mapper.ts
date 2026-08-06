@@ -1,8 +1,13 @@
 import { buildOrderSummary, calculateLineTotal } from "../utils";
 
-import type { OrderItemResponseDto, OrderResponseDto, OrderSummaryDto } from "../dto";
+import type {
+  OrderItemResponseDto,
+  OrderResponseDto,
+  OrderSummaryDto,
+  OrderTimelineEntryDto,
+} from "../dto";
 import type { OrderMapper } from "../interfaces";
-import type { Order, OrderItem } from "../types";
+import type { Order, OrderItem, OrderStatusHistoryEntry } from "../types";
 
 function toItemResponseDto(item: OrderItem): OrderItemResponseDto {
   return {
@@ -37,6 +42,8 @@ function toOrderResponseDto(order: Order, items: OrderItem[]): OrderResponseDto 
     fulfillmentStatus: order.fulfillmentStatus,
     billingAddressId: order.billingAddressId,
     shippingAddressId: order.shippingAddressId,
+    billingAddress: order.billingAddress,
+    shippingAddress: order.shippingAddress,
     couponCode: order.couponCode,
     notes: order.notes,
     items: toItemResponseList(items),
@@ -46,14 +53,29 @@ function toOrderResponseDto(order: Order, items: OrderItem[]): OrderResponseDto 
   };
 }
 
+function toTimelineEntryDto(entry: OrderStatusHistoryEntry): OrderTimelineEntryDto {
+  return {
+    id: entry.id,
+    status: entry.status,
+    note: entry.note,
+    createdAt: entry.createdAt,
+  };
+}
+
+function toTimelineEntryList(entries: OrderStatusHistoryEntry[]): OrderTimelineEntryDto[] {
+  return entries.map(toTimelineEntryDto);
+}
+
 /**
- * The only place an `Order`/`OrderItem` is converted to its public
- * response DTO shape(s) — callers map through this instead of building
- * any of them by hand.
+ * The only place an `Order`/`OrderItem`/`OrderStatusHistoryEntry` is
+ * converted to its public response DTO shape(s) — callers map through
+ * this instead of building any of them by hand.
  */
 export const orderMapper: OrderMapper = {
   toItemResponseDto,
   toItemResponseList,
   toSummaryDto,
   toOrderResponseDto,
+  toTimelineEntryDto,
+  toTimelineEntryList,
 };

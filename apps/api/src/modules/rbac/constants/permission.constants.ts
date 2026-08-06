@@ -51,6 +51,15 @@ export const PERMISSIONS = {
    * browsing *other* shoppers' carts (the admin-facing paginated
    * listing). */
   CART_READ: "cart:read",
+  /** Every read/cancel on an order is self-service — a caller acts
+   * only on their own order, enforced by `modules/order`'s own
+   * ownership checks, never a permission. Progressing an order beyond
+   * cancellation (`pending` → `confirmed` → `processing` → `completed`,
+   * or issuing a `refunded` status) is an operational/staff action a
+   * plain customer never performs on their own order, so
+   * `PATCH /orders/:id/status` is gated by this permission instead of
+   * ownership — see `OrderService.updateStatus`. */
+  ORDER_UPDATE: "order:update",
 } as const;
 
 export type Permission = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
