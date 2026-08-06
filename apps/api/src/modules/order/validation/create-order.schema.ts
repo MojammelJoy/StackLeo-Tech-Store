@@ -1,24 +1,22 @@
 import { z } from "zod";
 
-import { ORDER_MIN_ITEM_COUNT } from "../constants";
 import { couponCodeSchema, notesSchema } from "../schemas";
 
-import { addOrderItemSchema } from "./add-order-item.schema";
-
 /**
- * `guestEmail` is optional here on purpose: a caller placing an order
- * as a registered user never supplies one (the service derives identity
- * from `actor` instead — see `service/order.service.ts`), while a guest
- * checkout does, for order confirmation/lookup. `billingAddressId`/
- * `shippingAddressId` are required for every order regardless. Never a
- * currency/amount field: those are computed server-side from the
- * priced items, not submitted by the client.
+ * Deliberately has no `items`/`guestEmail`/amount fields: this API is
+ * "place order from my cart" only (authenticated users, per this
+ * module's requirements) — `OrderService.placeOrder` resolves items
+ * from the caller's own cart via `CartCheckoutProvider`, re-validating
+ * and re-pricing every one itself (see that method's doc comment), the
+ * same reasoning `modules/cart`'s `addCartItemSchema` documents for why
+ * a client never submits `unitPrice`. `billingAddressId`/
+ * `shippingAddressId` are required for every order and are
+ * ownership-checked by `AddressSnapshotProvider` before anything else
+ * runs.
  */
 export const createOrderSchema = z.object({
-  guestEmail: z.string().email().optional(),
   billingAddressId: z.string().min(1),
   shippingAddressId: z.string().min(1),
   couponCode: couponCodeSchema.optional(),
   notes: notesSchema.optional(),
-  items: z.array(addOrderItemSchema).min(ORDER_MIN_ITEM_COUNT),
 });

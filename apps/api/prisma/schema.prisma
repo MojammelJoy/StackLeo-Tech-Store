@@ -638,3 +638,113 @@ model Address {
   @@index([deletedAt])
   @@map("addresses")
 }
+
+/// A placed order — a permanent, mostly-immutable record of what was
+/// charged, not a live view of a cart (see `modules/order`'s `Order`
+/// doc comment for the full reasoning, mirroring `Cart`/`CartItem`'s
+/// own "immutable snapshot" rationale but stronger here: an order must
+/// still show what was actually bought even if the product, its price,
+/// or the customer's address book all change afterward).
+///
+/// `sequenceNumber` is a native Postgres autoincrement column — the
+/// atomic, race-safe counter `modules/order`'s customer-facing
+/// `orderNumber` (e.g. `"ORD-000123"`) is derived from at read time
+/// (see `utils/order-number.util.ts`'s `formatOrderNumber`); no
+/// separate `orderNumber` column exists; it's never stored, only
+/// formatted from this. `userId` is a bare foreign-key-shaped field,
+/// mirroring every other cross-module reference in this schema.
+///
+/// `billingAddressId`/`shippingAddressId` point at `Address.id` for
+/// traceability only; `billingAddress`/`shippingAddress` are the actual
+/// frozen snapshot (recipient/line1/city/etc. as they were at checkout)
+/// this order's shipping/billing depends on — the address row itself
+/// can be edited or soft-deleted later without altering historical
+/// order data. `status`/`paymentStatus`/`fulfillmentStatus` are three
+/// independent plain-string lifecycle dimensions — see
+/// `modules/order`'s `ORDER_STATUSES` doc comment for why they're not
+/// one combined enum. All monetary fields are minor currency units
+/// (e.g. cents for USD), matching `Product.price`.
+model Order {
+  id             String @id @default(cuid())
+  sequenceNumber Int    @unique @default(autoincrement()) @map("sequence_number")
+
+  userId     String? @map("user_id")
+  guestEmail String? @map("guest_email")
+
+  status            String @default("pending")
+  paymentStatus     String @default("pending") @map("payment_status")
+  fulfillmentStatus String @default("unfulfilled") @map("fulfillment_status")
+
+  billingAddressId  String @map("billing_address_id")
+  shippingAddressId String @map("shipping_address_id")
+  /// Frozen `AddressSnapshot` JSON (see `modules/order/types`) — never
+  /// re-derived from `Address` after the order is placed.
+  billingAddress    Json   @map("billing_address")
+  shippingAddress   Json   @map("shipping_address")
+
+  couponCode String? @map("coupon_code")
+  notes      String?
+  currency   String
+
+  subtotal      Int
+  discountTotal Int @default(0) @map("discount_total")
+  taxTotal      Int @default(0) @map("tax_total")
+  shippingTotal Int @default(0) @map("shipping_total")
+  total         Int
+
+  items         OrderItem[]
+  statusHistory OrderStatusHistory[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([userId])
+  @@index([status])
+  @@map("orders")
+}
+
+/// A single product line within an `Order`, frozen at checkout.
+/// `productId` is a bare foreign-key-shaped field — no relation to
+/// `Product`, mirroring `CartItem.productId`'s convention;
+/// `sku`/`productName`/`unitPrice` are all snapshotted at order-placement
+/// time (see `modules/order/types/order-item.types.ts`'s `OrderItem` doc
+/// comment) — unlike `CartItem`, these are never re-derived from the
+/// live product afterward under any circumstance, since an order is a
+/// historical record of an actual sale.
+model OrderItem {
+  id          String @id @default(cuid())
+  orderId     String @map("order_id")
+  order       Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId   String @map("product_id")
+  sku         String
+  productName String @map("product_name")
+  quantity    Int
+  /// Minor currency unit (e.g. cents for USD), matching `Product.price`.
+  unitPrice   Int    @map("unit_price")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([orderId])
+  @@map("order_items")
+}
+
+/// One append-only entry in an order's status timeline — written once
+/// per `status` transition (including the initial status at creation),
+/// never updated or deleted, mirroring `InventoryMovement`'s identical
+/// "audit ledger" shape. `status` holds an `ORDER_STATUSES` value (the
+/// overall order lifecycle this timeline tracks — not
+/// `paymentStatus`/`fulfillmentStatus`, which have no history feature
+/// requested for this API).
+model OrderStatusHistory {
+  id      String  @id @default(cuid())
+  orderId String  @map("order_id")
+  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  status  String
+  note    String?
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([orderId])
+  @@map("order_status_history")
+}
