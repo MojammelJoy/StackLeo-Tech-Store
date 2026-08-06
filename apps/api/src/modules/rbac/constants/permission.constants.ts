@@ -44,6 +44,13 @@ export const PERMISSIONS = {
   MEDIA_CREATE: "media:create",
   MEDIA_UPDATE: "media:update",
   MEDIA_DELETE: "media:delete",
+  /** Every cart mutation (add/update/remove/clear/merge item) is
+   * self-service — a caller acts only on their own cart, enforced by
+   * `modules/cart`'s own ownership checks, never a permission — so the
+   * only cart capability that needs a permission at all is staff
+   * browsing *other* shoppers' carts (the admin-facing paginated
+   * listing). */
+  CART_READ: "cart:read",
 } as const;
 
 export type Permission = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];

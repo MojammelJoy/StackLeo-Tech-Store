@@ -2,6 +2,7 @@ import { Router } from "express";
 
 import { AuthPrismaRepository, AuthService, authRouter } from "../../modules/auth";
 import { brandRouter } from "../../modules/brand";
+import { cartRouter } from "../../modules/cart";
 import { categoryRouter } from "../../modules/category";
 import { inventoryRouter } from "../../modules/inventory";
 import { mediaRouter } from "../../modules/media";
@@ -54,3 +55,4 @@ v1Router.use("/brands", brandRouter);
 v1Router.use("/inventory", inventoryRouter);
 v1Router.use("/media", mediaRouter);
 v1Router.use("/search", searchRouter);
+v1Router.use("/cart", cartRouter);
