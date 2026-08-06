@@ -7,6 +7,7 @@ import type { Payment, PaymentTransaction } from "../types";
 function toResponseDto(payment: Payment): PaymentResponseDto {
   return {
     id: payment.id,
+    transactionId: payment.transactionId,
     orderId: payment.orderId,
     userId: payment.userId,
     method: payment.method,
@@ -16,6 +17,7 @@ function toResponseDto(payment: Payment): PaymentResponseDto {
     currency: payment.currency,
     formattedAmount: formatMoney({ amount: payment.amount, currency: payment.currency }),
     providerRef: payment.providerRef,
+    metadata: payment.metadata,
     createdAt: payment.createdAt,
     updatedAt: payment.updatedAt,
   };

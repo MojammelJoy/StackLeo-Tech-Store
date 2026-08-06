@@ -7,7 +7,7 @@ export type { PaymentMethod } from "./payment-method.constants";
 export { PAYMENT_METHOD_PROVIDERS, PAYMENT_PROVIDERS } from "./payment-provider.constants";
 export type { PaymentProviderName } from "./payment-provider.constants";
 
-export { PAYMENT_STATUSES } from "./payment-status.constants";
+export { PAYMENT_STATUS_TRANSITIONS, PAYMENT_STATUSES } from "./payment-status.constants";
 export type { PaymentStatus } from "./payment-status.constants";
 
 export {

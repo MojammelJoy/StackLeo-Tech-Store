@@ -748,3 +748,82 @@ model OrderStatusHistory {
   @@index([orderId])
   @@map("order_status_history")
 }
+
+/// One payment attempt against an order. `orderId` is a bare
+/// foreign-key-shaped field — no relation to `Order`, mirroring every
+/// other cross-module reference in this schema (`modules/payment` never
+/// imports `modules/order`, and vice versa). An order may accumulate
+/// more than one `Payment` row over its life (a failed attempt followed
+/// by a successful retry — see `modules/payment`'s
+/// `PaymentRepository.findByOrderId` doc comment); "prevent duplicate
+/// *successful* payments" is enforced by `PaymentService`, not a unique
+/// constraint here, since multiple non-successful attempts are expected
+/// and fine.
+///
+/// `sequenceNumber` is a native Postgres autoincrement column —
+/// `modules/payment`'s customer-facing `transactionId` (e.g.
+/// `"PAY-00001234"`) is derived from it at read time, the exact same
+/// pattern `Order.sequenceNumber`/`orderNumber` already establishes;
+/// see `utils/payment-reference.util.ts`'s `formatPaymentReference`.
+/// This is intentionally independent of `providerRef` (nullable — only
+/// ever set once a real gateway assigns one), so a payment can be
+/// looked up by its own identifier from the moment it's created,
+/// regardless of which provider (or none, for cash on delivery) ends up
+/// processing it.
+///
+/// `metadata` is free-form gateway/context data ("store payment
+/// metadata") — e.g. a card's brand/last4 or a mobile-banking wallet
+/// number once a real provider populates it; nothing in this API
+/// requires or interprets its shape.
+model Payment {
+  id             String @id @default(cuid())
+  sequenceNumber Int    @unique @default(autoincrement()) @map("sequence_number")
+
+  orderId  String  @map("order_id")
+  userId   String? @map("user_id")
+  method   String
+  provider String
+  status   String  @default("pending")
+
+  amount   Int
+  currency String
+
+  providerRef String? @map("provider_ref")
+  metadata    Json?
+
+  transactions PaymentTransaction[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([orderId])
+  @@index([userId])
+  @@index([status])
+  @@map("payments")
+}
+
+/// A single gateway interaction (or gateway-free lifecycle event, e.g.
+/// a cancellation) recorded against a `Payment` — its append-only
+/// history ("payment history"/"transaction handling"), mirroring
+/// `OrderStatusHistory`'s identical audit-ledger shape. `amount`/
+/// `currency` are denormalized onto each row (rather than always equal
+/// to the parent `Payment`'s) since a partial-refund transaction's
+/// amount can legitimately differ from the payment's own total.
+model PaymentTransaction {
+  id        String  @id @default(cuid())
+  paymentId String  @map("payment_id")
+  payment   Payment @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  type      String
+  status    String
+
+  amount   Int
+  currency String
+
+  providerRef  String? @map("provider_ref")
+  errorMessage String? @map("error_message")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([paymentId])
+  @@map("payment_transactions")
+}

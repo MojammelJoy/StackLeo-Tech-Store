@@ -7,6 +7,10 @@ export const PAYMENT_TRANSACTION_TYPES = {
   CAPTURE: "capture",
   REFUND: "refund",
   VERIFICATION: "verification",
+  /** Recorded when a payment is called off before any money moved —
+   * see `PaymentService.cancel`. Distinct from `REFUND`, which reverses
+   * money that already did. */
+  CANCELLATION: "cancellation",
 } as const;
 
 export type PaymentTransactionType =

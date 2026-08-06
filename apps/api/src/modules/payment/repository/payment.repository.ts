@@ -1,4 +1,5 @@
 import type { PaginatedResult, ParsedQuery } from "../../../common";
+import type { PaymentStatus } from "../constants";
 import type { PaymentFilterOptions } from "../interfaces";
 import type {
   CreatePaymentInput,
@@ -16,14 +17,31 @@ import type {
  * touches service code. `findByOrderId` returns an array — an order can
  * accumulate more than one `Payment` record over its life (a failed card
  * attempt followed by a successful retry, for instance).
+ *
+ * `recordOutcome` exists as its own method rather than a separate
+ * `update` + `addTransaction` call from the service: it updates the
+ * payment's `status` and appends the `PaymentTransaction` explaining why
+ * atomically, in one `$transaction` — see
+ * `PaymentPrismaRepository.recordOutcome`'s doc comment.
  */
 export interface PaymentRepository {
   findById(id: string): Promise<Payment | null>;
-  findByOrderId(orderId: string): Promise<Payment[]>;
+  findByTransactionId(transactionId: string): Promise<Payment | null>;
   findByProviderRef(providerRef: string): Promise<Payment | null>;
+  findByOrderId(orderId: string): Promise<Payment[]>;
+  findByUserId(
+    userId: string,
+    query: ParsedQuery,
+    filters?: PaymentFilterOptions,
+  ): Promise<PaginatedResult<Payment>>;
   findAll(query: ParsedQuery, filters?: PaymentFilterOptions): Promise<PaginatedResult<Payment>>;
   create(data: CreatePaymentInput): Promise<Payment>;
   update(id: string, data: UpdatePaymentInput): Promise<Payment>;
+  recordOutcome(
+    id: string,
+    status: PaymentStatus,
+    transaction: Omit<CreatePaymentTransactionInput, "paymentId">,
+  ): Promise<Payment>;
   findTransactionsByPaymentId(paymentId: string): Promise<PaymentTransaction[]>;
   addTransaction(data: CreatePaymentTransactionInput): Promise<PaymentTransaction>;
 }

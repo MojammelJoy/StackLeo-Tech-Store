@@ -19,3 +19,35 @@ export const PAYMENT_STATUSES = {
 } as const;
 
 export type PaymentStatus = (typeof PAYMENT_STATUSES)[keyof typeof PAYMENT_STATUSES];
+
+/**
+ * The valid next statuses from each `PaymentStatus` — "maintain payment
+ * status lifecycle" enforced as data, not scattered `if`s, mirroring
+ * `modules/order`'s identical `ORDER_STATUS_TRANSITIONS`. `PENDING` can
+ * reach `SUCCEEDED` directly (cash on delivery marked collected — no
+ * gateway `PROCESSING` phase exists for it) as well as `PROCESSING`
+ * (a gateway charge was attempted). `FAILED`/`CANCELLED`/`REFUNDED` are
+ * all terminal for *this* payment record — a failed or cancelled
+ * payment is retried by creating a new `Payment` row (see
+ * `PaymentRepository`'s doc comment), never by resurrecting the old
+ * one. `utils/payment-status.util.ts`'s `canTransitionPaymentStatus` is
+ * the only place this map is read.
+ */
+export const PAYMENT_STATUS_TRANSITIONS: Record<PaymentStatus, readonly PaymentStatus[]> = {
+  [PAYMENT_STATUSES.PENDING]: [
+    PAYMENT_STATUSES.PROCESSING,
+    PAYMENT_STATUSES.SUCCEEDED,
+    PAYMENT_STATUSES.FAILED,
+    PAYMENT_STATUSES.CANCELLED,
+  ],
+  [PAYMENT_STATUSES.PROCESSING]: [
+    PAYMENT_STATUSES.SUCCEEDED,
+    PAYMENT_STATUSES.FAILED,
+    PAYMENT_STATUSES.CANCELLED,
+  ],
+  [PAYMENT_STATUSES.SUCCEEDED]: [PAYMENT_STATUSES.PARTIALLY_REFUNDED, PAYMENT_STATUSES.REFUNDED],
+  [PAYMENT_STATUSES.PARTIALLY_REFUNDED]: [PAYMENT_STATUSES.REFUNDED],
+  [PAYMENT_STATUSES.FAILED]: [],
+  [PAYMENT_STATUSES.CANCELLED]: [],
+  [PAYMENT_STATUSES.REFUNDED]: [],
+};

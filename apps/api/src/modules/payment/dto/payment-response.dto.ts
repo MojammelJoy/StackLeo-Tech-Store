@@ -5,6 +5,7 @@ import type { CurrencyCode, PaymentMethod, PaymentProviderName, PaymentStatus } 
  * (via `utils/money.util.ts`), never stored. */
 export interface PaymentResponseDto {
   id: string;
+  transactionId: string;
   orderId: string;
   userId: string | null;
   method: PaymentMethod;
@@ -14,6 +15,7 @@ export interface PaymentResponseDto {
   currency: CurrencyCode;
   formattedAmount: string;
   providerRef: string | null;
+  metadata: Record<string, unknown> | null;
   createdAt: Date;
   updatedAt: Date;
 }
