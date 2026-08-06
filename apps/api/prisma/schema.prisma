@@ -463,3 +463,61 @@ model MediaAsset {
   @@index([status])
   @@map("media_assets")
 }
+
+/// A shopper's cart — either guest-owned (`guestToken` set, `userId`
+/// null) or user-owned (`userId` set, `guestToken` null); exactly one of
+/// the two is ever set, enforced by `modules/cart`'s service layer, not
+/// by this schema. `userId` is a bare foreign-key-shaped field, not a
+/// relation — mirrors `Product.categoryId`'s convention (see that
+/// model's doc comment): `modules/cart` stays decoupled from
+/// `modules/user` at the Prisma-relation level, consistent with every
+/// other cross-module reference in this schema. `status` is a plain
+/// string for the same reason `Product`/`Category`/`Brand`/
+/// `InventoryItem`/`MediaAsset` all are (see `Product`'s doc comment) —
+/// `modules/cart`'s `CART_STATUSES` owns the vocabulary.
+model Cart {
+  id         String  @id @default(cuid())
+  userId     String? @map("user_id")
+  guestToken String? @unique @map("guest_token")
+  currency   String  @default("USD")
+  status     String  @default("active")
+
+  items CartItem[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([userId])
+  @@index([status])
+  @@map("carts")
+}
+
+/// A single product line within a `Cart`. `productId` is a bare
+/// foreign-key-shaped field — no relation to `Product`, mirroring
+/// `Cart.userId`'s convention above; `sku`/`unitPrice` are snapshotted
+/// at add-time (see `modules/cart/types/cart-item.types.ts`'s `CartItem`
+/// doc comment) — `modules/cart/service/cart.service.ts` recomputes
+/// totals from the *current* product price at read time instead of
+/// trusting this snapshot, so a price change elsewhere is still
+/// reflected without this column needing to change. Unique per
+/// `(cartId, productId)` — a cart never has two rows for the same
+/// product; adding an already-present product increments this row's
+/// `quantity` instead (see `CartPrismaRepository.addItem`).
+model CartItem {
+  id        String  @id @default(cuid())
+  cartId    String  @map("cart_id")
+  cart      Cart    @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  productId String  @map("product_id")
+  sku       String
+  quantity  Int
+  /// Minor currency unit (e.g. cents for USD), matching `Product.price`.
+  unitPrice Int     @map("unit_price")
+  selected  Boolean @default(true)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([cartId, productId])
+  @@index([cartId])
+  @@map("cart_items")
+}

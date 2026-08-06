@@ -36,6 +36,7 @@ export const ROLE_PERMISSIONS: RolePermissionMap = {
     PERMISSIONS.MEDIA_CREATE,
     PERMISSIONS.MEDIA_UPDATE,
     PERMISSIONS.MEDIA_DELETE,
+    PERMISSIONS.CART_READ,
   ],
   [ROLES.ADMIN]: [
     PERMISSIONS.USER_READ,
@@ -62,6 +63,7 @@ export const ROLE_PERMISSIONS: RolePermissionMap = {
     PERMISSIONS.MEDIA_CREATE,
     PERMISSIONS.MEDIA_UPDATE,
     PERMISSIONS.MEDIA_DELETE,
+    PERMISSIONS.CART_READ,
   ],
   // `PRODUCT_READ`/`CATEGORY_READ`/`BRAND_READ`/`MEDIA_READ` are
   // deliberately absent here: each gates seeing its module's non-

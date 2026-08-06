@@ -22,3 +22,11 @@ export type CartStatus = (typeof CART_STATUSES)[keyof typeof CART_STATUSES];
 
 export const CART_SORTABLE_FIELDS = ["createdAt", "updatedAt"] as const;
 export const CART_FILTERABLE_FIELDS = ["userId", "status"] as const;
+
+/** The request header a guest caller (no `Authorization` bearer token)
+ * carries their cart identity in — set from `createGuestCart`'s
+ * response, sent back on every subsequent guest cart request. Never a
+ * cookie: keeps the Cart API stateless/explicit and simple to exercise
+ * from a plain HTTP client, matching this module's header-only design
+ * (see `controller/cart.controller.ts`). */
+export const CART_GUEST_TOKEN_HEADER = "x-guest-token";
