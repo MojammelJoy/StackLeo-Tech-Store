@@ -521,3 +521,59 @@ model CartItem {
   @@index([cartId])
   @@map("cart_items")
 }
+
+/// A shopper's "save for later" list — either guest-owned (`guestToken`
+/// set, `userId` null) or user-owned (`userId` set, `guestToken` null),
+/// mirroring `Cart`'s exact identity convention (see that model's doc
+/// comment). `shareToken` is set only once `visibility` is `"shared"` —
+/// the shape `modules/wishlist`'s future sharing feature would use;
+/// nothing in the current API generates or serves one. `status`/
+/// `visibility` are plain strings for the same reason every other
+/// lifecycle-bearing model in this schema is (see `Product`'s doc
+/// comment) — `modules/wishlist`'s `WISHLIST_STATUSES`/
+/// `WISHLIST_VISIBILITIES` own the vocabulary.
+model Wishlist {
+  id         String  @id @default(cuid())
+  userId     String? @map("user_id")
+  guestToken String? @unique @map("guest_token")
+  visibility String  @default("private")
+  shareToken String? @unique @map("share_token")
+  status     String  @default("active")
+
+  items WishlistItem[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([userId])
+  @@index([status])
+  @@map("wishlists")
+}
+
+/// A single product reference within a `Wishlist`. `productId` is a
+/// bare foreign-key-shaped field — no relation to `Product`, mirroring
+/// `CartItem.productId`'s convention; `sku`/`priceAtAdd` are
+/// snapshotted at add-time (see
+/// `modules/wishlist/types/wishlist-item.types.ts`'s `WishlistItem` doc
+/// comment) so a future price-drop notification feature can compare
+/// against it. Unique per `(wishlistId, productId)` — a product can
+/// exist at most once per wishlist; adding an already-present product
+/// is rejected rather than merged (there is no quantity concept here,
+/// unlike `CartItem`).
+model WishlistItem {
+  id                   String   @id @default(cuid())
+  wishlistId           String   @map("wishlist_id")
+  wishlist             Wishlist @relation(fields: [wishlistId], references: [id], onDelete: Cascade)
+  productId            String   @map("product_id")
+  sku                  String
+  /// Minor currency unit (e.g. cents for USD), matching `Product.price`.
+  priceAtAdd           Int      @map("price_at_add")
+  notifyOnAvailability Boolean  @default(false) @map("notify_on_availability")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([wishlistId, productId])
+  @@index([wishlistId])
+  @@map("wishlist_items")
+}

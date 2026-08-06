@@ -9,6 +9,7 @@ import { mediaRouter } from "../../modules/media";
 import { productRouter } from "../../modules/product";
 import { searchRouter } from "../../modules/search";
 import { UserPrismaRepository, createUserRouter } from "../../modules/user";
+import { wishlistRouter } from "../../modules/wishlist";
 
 /**
  * Root of the versioned API surface. Business routes are registered
@@ -56,3 +57,4 @@ v1Router.use("/inventory", inventoryRouter);
 v1Router.use("/media", mediaRouter);
 v1Router.use("/search", searchRouter);
 v1Router.use("/cart", cartRouter);
+v1Router.use("/wishlist", wishlistRouter);
