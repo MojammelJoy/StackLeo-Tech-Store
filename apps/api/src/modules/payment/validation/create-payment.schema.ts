@@ -31,6 +31,7 @@ export const createPaymentSchema = z
     ]),
     amount: amountSchema,
     currency: currencyCodeSchema,
+    metadata: z.record(z.unknown()).optional(),
   })
   .refine((data) => PAYMENT_METHOD_PROVIDERS[data.method].includes(data.provider), {
     message: "provider is not valid for the selected payment method",
