@@ -1,6 +1,5 @@
-import type { Server } from "node:http";
-
 import type { Logger } from "../logger";
+import type { Server } from "node:http";
 
 interface GracefulShutdownOptions {
   server: Server;

@@ -1,6 +1,6 @@
-import type { NextFunction, Request, Response } from "express";
-
 import { NotFoundError } from "../errors";
+
+import type { NextFunction, Request, Response } from "express";
 
 /**
  * Catches any request that reached this point without matching a route.

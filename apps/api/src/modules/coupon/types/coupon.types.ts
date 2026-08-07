@@ -29,6 +29,7 @@ export interface Coupon {
   eligibleProductIds: string[] | null;
   eligibleCategoryIds: string[] | null;
   eligibleBrandIds: string[] | null;
+  deletedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }

@@ -8,4 +8,5 @@ export interface CouponValidationResponseDto {
   coupon: CouponResponseDto | null;
   errorCode: CouponValidationErrorCode | null;
   errorMessage: string | null;
+  discountAmount: number | null;
 }

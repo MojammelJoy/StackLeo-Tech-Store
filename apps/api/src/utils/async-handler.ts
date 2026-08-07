@@ -1,6 +1,5 @@
-import type { NextFunction, Request, Response } from "express";
-
 import type { AsyncRequestHandler } from "../types";
+import type { NextFunction, Request, Response } from "express";
 
 /**
  * Wraps an async Express route handler so a rejected promise is forwarded

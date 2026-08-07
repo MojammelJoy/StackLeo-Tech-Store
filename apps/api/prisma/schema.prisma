@@ -827,3 +827,83 @@ model PaymentTransaction {
   @@index([paymentId])
   @@map("payment_transactions")
 }
+
+/// A discount code, independently manageable from `Order`/`Payment`
+/// (which only ever stored a bare `couponCode` string — see
+/// `Order.couponCode`'s doc comment). `discountType`/`status` are plain
+/// strings, same convention as every other lifecycle-bearing model in
+/// this schema (see `Product`'s doc comment) — `modules/coupon`'s
+/// `DISCOUNT_TYPES`/`COUPON_STATUSES` own the vocabulary. The four
+/// `eligible*Ids` columns are `Json?`, not `String[]`, specifically so
+/// each can independently be SQL `NULL` ("open to all") or a JSON array
+/// ("restricted to exactly these", possibly `[]`) — Prisma scalar list
+/// fields can never be optional, so a plain `String[]` could not
+/// represent that distinction (see `modules/coupon/types/coupon.types.ts`'s
+/// `Coupon` doc comment).
+model Coupon {
+  id          String  @id @default(cuid())
+  code        String  @unique
+  description String?
+
+  discountType  String @map("discount_type")
+  discountValue Int    @map("discount_value")
+  currency      String
+
+  maxDiscountAmount Int? @map("max_discount_amount")
+  minOrderAmount    Int? @map("min_order_amount")
+
+  status    String    @default("draft")
+  startsAt  DateTime? @map("starts_at")
+  expiresAt DateTime? @map("expires_at")
+
+  usageLimit        Int? @map("usage_limit")
+  usageLimitPerUser Int? @map("usage_limit_per_user")
+  usageCount        Int  @default(0) @map("usage_count")
+
+  stackable Boolean @default(false)
+
+  eligibleUserIds     Json? @map("eligible_user_ids")
+  eligibleProductIds  Json? @map("eligible_product_ids")
+  eligibleCategoryIds Json? @map("eligible_category_ids")
+  eligibleBrandIds    Json? @map("eligible_brand_ids")
+
+  deletedAt DateTime? @map("deleted_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  redemptions CouponRedemption[]
+
+  @@index([status])
+  @@index([deletedAt])
+  @@map("coupons")
+}
+
+/// One "coupon X applied to cart Y" association — both the duplicate-
+/// application guard (`modules/coupon/service/coupon.service.ts` checks
+/// for an active, i.e. `removedAt: null`, row before allowing a new
+/// application) and the usage ledger `Coupon.usageCount`/
+/// `CouponRepository.countUserRedemptions` read from. `removedAt` is a
+/// soft-remove, not a hard delete: "remove coupon from cart" detaches
+/// the coupon from that cart without erasing the fact it was redeemed,
+/// so a per-user usage limit still counts it. `userId`/`cartId` are bare
+/// FK-shaped fields, no relation to `User`/`Cart` — this module never
+/// imports `modules/cart` (or vice versa), the same cross-module
+/// decoupling every foundation in this app follows.
+model CouponRedemption {
+  id       String @id @default(cuid())
+  couponId String @map("coupon_id")
+  coupon   Coupon @relation(fields: [couponId], references: [id], onDelete: Cascade)
+  userId   String @map("user_id")
+  cartId   String @map("cart_id")
+
+  discountAmount Int    @map("discount_amount")
+  currency       String
+
+  removedAt DateTime? @map("removed_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  @@index([couponId])
+  @@index([userId])
+  @@index([cartId])
+  @@map("coupon_redemptions")
+}

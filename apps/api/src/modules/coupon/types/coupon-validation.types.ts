@@ -9,4 +9,9 @@ export interface CouponValidationResult {
   coupon: Coupon | null;
   errorCode: CouponValidationErrorCode | null;
   errorMessage: string | null;
+  /** The safely-computed discount (see `utils/coupon-discount.util.ts`'s
+   * `calculateDiscount`) for the order amount the caller validated
+   * against — `null` whenever `valid` is `false`, since there is nothing
+   * meaningful to discount. */
+  discountAmount: number | null;
 }
