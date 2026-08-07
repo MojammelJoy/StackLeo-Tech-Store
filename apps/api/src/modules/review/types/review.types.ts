@@ -19,6 +19,7 @@ export interface Review {
   moderationStatus: ModerationStatus;
   helpfulCount: number;
   unhelpfulCount: number;
+  deletedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }
