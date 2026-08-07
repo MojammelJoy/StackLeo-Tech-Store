@@ -1,7 +1,7 @@
-import type { NextFunction, Request, Response } from "express";
-
 import { AppError } from "../errors";
 import { logger } from "../logger";
+
+import type { NextFunction, Request, Response } from "express";
 
 interface ErrorResponseBody {
   error: {

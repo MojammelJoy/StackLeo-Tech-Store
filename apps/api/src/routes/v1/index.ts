@@ -5,6 +5,7 @@ import { AuthPrismaRepository, AuthService, authRouter } from "../../modules/aut
 import { brandRouter } from "../../modules/brand";
 import { cartRouter } from "../../modules/cart";
 import { categoryRouter } from "../../modules/category";
+import { couponRouter } from "../../modules/coupon";
 import { inventoryRouter } from "../../modules/inventory";
 import { mediaRouter } from "../../modules/media";
 import { orderRouter } from "../../modules/order";
@@ -64,3 +65,4 @@ v1Router.use("/wishlist", wishlistRouter);
 v1Router.use("/addresses", addressRouter);
 v1Router.use("/orders", orderRouter);
 v1Router.use("/payments", paymentRouter);
+v1Router.use("/coupons", couponRouter);

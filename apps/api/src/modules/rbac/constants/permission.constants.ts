@@ -60,6 +60,20 @@ export const PERMISSIONS = {
    * `PATCH /orders/:id/status` is gated by this permission instead of
    * ownership — see `OrderService.updateStatus`. */
   ORDER_UPDATE: "order:update",
+  /** Coupons are admin-managed, never user-owned (unlike Cart/Order):
+   * every CRUD/listing/restore endpoint in `modules/coupon` is gated by
+   * one of these, mirroring `modules/product`/`modules/category`/
+   * `modules/brand`'s `*_CREATE`/`*_UPDATE`/`*_DELETE` (and, unlike
+   * those catalog modules, `COUPON_READ` too — there is no anonymous
+   * "browse the coupon catalog" storefront path, since a coupon's value
+   * (min order amount, discount, eligibility) isn't meant to be
+   * broadly discoverable). Applying/validating/removing a coupon on
+   * one's own cart needs no permission at all — see
+   * `modules/coupon/routes/coupon.routes.ts`. */
+  COUPON_READ: "coupon:read",
+  COUPON_CREATE: "coupon:create",
+  COUPON_UPDATE: "coupon:update",
+  COUPON_DELETE: "coupon:delete",
 } as const;
 
 export type Permission = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];

@@ -1,8 +1,12 @@
 import { getRemainingUses } from "../utils";
 
-import type { CouponResponseDto, CouponValidationResponseDto } from "../dto";
+import type {
+  CouponApplicationResponseDto,
+  CouponResponseDto,
+  CouponValidationResponseDto,
+} from "../dto";
 import type { CouponMapper } from "../interfaces";
-import type { Coupon, CouponValidationResult } from "../types";
+import type { Coupon, CouponRedemption, CouponValidationResult } from "../types";
 
 function toResponseDto(coupon: Coupon): CouponResponseDto {
   return {
@@ -41,14 +45,29 @@ function toValidationResponseDto(result: CouponValidationResult): CouponValidati
     coupon: result.coupon === null ? null : toResponseDto(result.coupon),
     errorCode: result.errorCode,
     errorMessage: result.errorMessage,
+    discountAmount: result.discountAmount,
   };
 }
 
-/** The only place a `Coupon`/`CouponValidationResult` is converted to
- * its public response-DTO shape — callers map through this instead of
- * building the DTO by hand. */
+function toApplicationResponseDto(
+  coupon: Coupon,
+  redemption: CouponRedemption,
+): CouponApplicationResponseDto {
+  return {
+    coupon: toResponseDto(coupon),
+    cartId: redemption.cartId,
+    discountAmount: redemption.discountAmount,
+    currency: redemption.currency,
+    appliedAt: redemption.createdAt,
+  };
+}
+
+/** The only place a `Coupon`/`CouponValidationResult`/`CouponRedemption`
+ * is converted to its public response-DTO shape — callers map through
+ * this instead of building the DTO by hand. */
 export const couponMapper: CouponMapper = {
   toResponseDto,
   toResponseList,
   toValidationResponseDto,
+  toApplicationResponseDto,
 };

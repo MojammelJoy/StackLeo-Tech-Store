@@ -1,7 +1,7 @@
-import type { Express } from "express";
-
 import { healthRouter } from "./health.routes";
 import { v1Router } from "./v1";
+
+import type { Express } from "express";
 
 /**
  * Mounts every route group onto the application. The single place that
