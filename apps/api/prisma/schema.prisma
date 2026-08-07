@@ -907,3 +907,65 @@ model CouponRedemption {
   @@index([cartId])
   @@map("coupon_redemptions")
 }
+
+/// A single notification record. `channel`/`type`/`priority`/`status`
+/// are plain strings, same convention as every other lifecycle-bearing
+/// model in this schema (see `Product`'s doc comment) —
+/// `modules/notification`'s own constants own the vocabulary.
+/// `userId` is a bare FK-shaped field, no relation to `User` — this
+/// module never imports `modules/user`. `isRead`/`readAt` are this
+/// module's own addition on top of the Notification Foundation's
+/// delivery-lifecycle fields (`status`/`sentAt`/`deliveredAt`/`failedAt`/
+/// `retryCount`/`maxRetries`/`nextRetryAt`/`scheduledAt`): "delivered"
+/// (has this notification reached the recipient) and "read" (has the
+/// recipient seen it) are independent dimensions — the Notification API
+/// only ever drives the latter, since it creates and manages in-app
+/// records only (see `modules/notification/service/notification.service.ts`'s
+/// doc comment) and never attempts email/SMS/push delivery. The
+/// delivery-lifecycle columns are kept exactly as the foundation defined
+/// them (unused by this API's own write paths beyond `create`) so a
+/// future delivery module can start driving them without a schema
+/// change — "keep notification delivery provider-independent".
+model Notification {
+  id     String  @id @default(cuid())
+  userId String? @map("user_id")
+
+  channel  String
+  type     String
+  priority String @default("normal")
+  status   String @default("pending")
+
+  templateKey String? @map("template_key")
+  subject     String?
+  body        String
+  recipient   String
+
+  /// A flat string-to-string map — see
+  /// `modules/notification/types/notification.types.ts`'s `Notification.metadata`.
+  metadata Json?
+
+  isRead Boolean   @default(false) @map("is_read")
+  readAt DateTime? @map("read_at")
+
+  scheduledAt  DateTime? @map("scheduled_at")
+  sentAt       DateTime? @map("sent_at")
+  deliveredAt  DateTime? @map("delivered_at")
+  failedAt     DateTime? @map("failed_at")
+  errorMessage String?   @map("error_message")
+
+  retryCount  Int       @default(0) @map("retry_count")
+  maxRetries  Int       @default(0) @map("max_retries")
+  nextRetryAt DateTime? @map("next_retry_at")
+
+  deletedAt DateTime? @map("deleted_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  @@index([userId])
+  /// Matches `NotificationRepository.countUnread`'s `WHERE` clause
+  /// exactly — "provide an efficient unread count query".
+  @@index([userId, isRead, deletedAt])
+  @@index([status])
+  @@index([deletedAt])
+  @@map("notifications")
+}

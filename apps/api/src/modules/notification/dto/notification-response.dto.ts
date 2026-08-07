@@ -9,7 +9,9 @@ import type {
  * (via `mapper/` and `utils/recipient.util.ts`'s `maskRecipient`) —
  * never the raw email address/phone number/device token — since this
  * DTO is what a caller (e.g. an admin notification-history view) sees,
- * not what a provider sends to. */
+ * not what a provider sends to. `isRead`/`readAt`/`metadata` are this
+ * module's own addition — see `types/notification.types.ts`'s
+ * `Notification` doc comment. */
 export interface NotificationResponseDto {
   id: string;
   userId: string | null;
@@ -21,6 +23,9 @@ export interface NotificationResponseDto {
   subject: string | null;
   body: string;
   recipient: string;
+  metadata: Record<string, string> | null;
+  isRead: boolean;
+  readAt: Date | null;
   scheduledAt: Date | null;
   sentAt: Date | null;
   deliveredAt: Date | null;

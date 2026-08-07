@@ -1,18 +1,19 @@
 /**
- * Reusable notification infrastructure: domain types (`Notification`,
- * one record per channel per delivery attempt — see
- * `types/notification.types.ts`), DTOs + Zod validation schemas (a
- * generic notification shape plus one channel-specific `send*` shape
- * each for email/SMS/push/in-app, built from reusable field-level
- * schemas in `schemas/`), the repository contract (plus its
- * currently-skeletal Prisma implementation), a skeleton service, the
- * per-channel provider abstractions (Resend/SendGrid, Twilio, Firebase
- * skeletons — see `providers/`), the template-rendering contract (see
- * `templates/`), event-payload/handler shapes for event-driven dispatch
- * (see `events/`), the notification mapper, and the
- * status/retry-policy/recipient-masking utilities that support it all.
- * No controllers, routes, business logic, actual email/SMS/push
- * sending, or queue implementation live here.
+ * The full Notification API: domain types (`Notification`, one record
+ * per channel per delivery attempt, extended with `isRead`/`readAt`/
+ * `deletedAt` — see `types/notification.types.ts`), DTOs + Zod
+ * validation schemas, the repository contracts (`NotificationRepository`
+ * plus its real Prisma implementation), the real `NotificationService`
+ * (creation, self-service listing/lookup, read/unread state, soft
+ * delete/restore, and an efficient unread count — see that service's
+ * doc comment for why delivery is deliberately out of scope),
+ * controllers/routes, and the notification mapper. Also re-exports the
+ * foundation's multi-channel delivery infrastructure — per-channel
+ * provider abstractions (`providers/`), template rendering
+ * (`templates/`), event-payload/handler shapes (`events/`), and the
+ * generic `send*`/`createNotificationSchema` shapes — entirely unwired
+ * from this module's own service/routes, kept only so a future delivery
+ * module can build on it without a domain reshape.
  */
 export {
   BACKOFF_STRATEGIES,
@@ -58,19 +59,24 @@ export {
 } from "./schemas";
 
 export {
+  createInAppNotificationSchema,
   createNotificationSchema,
+  notificationIdParamsSchema,
   sendEmailSchema,
   sendInAppSchema,
   sendPushSchema,
   sendSmsSchema,
 } from "./validation";
 export type {
+  CreateInAppNotificationDto,
   CreateNotificationDto,
+  MarkAllReadResponseDto,
   NotificationResponseDto,
   SendEmailDto,
   SendInAppDto,
   SendPushDto,
   SendSmsDto,
+  UnreadCountResponseDto,
 } from "./dto";
 
 export type {
@@ -126,6 +132,10 @@ export {
 } from "./utils";
 
 export { NotificationPrismaRepository } from "./repository";
-export type { NotificationRepository } from "./repository";
+export type { NotificationLookupOptions, NotificationRepository } from "./repository";
 
 export { NotificationService } from "./service";
+
+export { NotificationController } from "./controller";
+
+export { notificationRouter } from "./routes";

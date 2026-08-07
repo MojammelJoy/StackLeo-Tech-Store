@@ -1,108 +1,152 @@
-import { NotImplementedError } from "../../../errors";
+import { ConflictError, NotFoundError } from "../../../errors";
+import { logger } from "../../../logger";
+import { NOTIFICATION_CHANNELS } from "../constants";
+import { notificationMapper } from "../mapper";
 
 import type { AuthenticatedUser } from "../../../auth";
 import type { PaginatedResult, ParsedQuery } from "../../../common";
-import type { EmailProviderName, PushProviderName, SmsProviderName } from "../constants";
 import type {
-  CreateNotificationDto,
-  SendEmailDto,
-  SendInAppDto,
-  SendPushDto,
-  SendSmsDto,
+  CreateInAppNotificationDto,
+  MarkAllReadResponseDto,
+  NotificationResponseDto,
+  UnreadCountResponseDto,
 } from "../dto";
-import type { NotificationEvent } from "../events";
-import type { MultiChannelNotificationRequest, NotificationFilterOptions } from "../interfaces";
-import type { EmailProvider, PushProvider, SmsProvider } from "../providers";
-import type { NotificationRepository } from "../repository";
+import type { NotificationFilterOptions } from "../interfaces";
+import type { NotificationLookupOptions, NotificationRepository } from "../repository";
 import type { Notification } from "../types";
 
 /**
- * Skeleton notification service — the operations a concrete
- * implementation will expose once notification persistence, real
- * channel providers, and an actual queue/scheduler exist. Depends on
- * `NotificationRepository` (interface only; see `repository/`) for
- * persistence and three separate *registries* of providers — one each
- * for email, SMS, and push, keyed by their respective provider-name
- * type — never a single hardcoded provider per channel, which is what
- * actually lets this foundation "support multi-channel delivery" and
- * "future provider integrations": routing an email to Resend vs.
- * SendGrid (or an SMS to Twilio, a push to Firebase) is a matter of
- * choosing a registry key, not branching logic baked into this class.
- * Every method throws `NotImplementedError` — no database operations,
- * no calls to any provider, no template rendering, and no queue/retry
- * scheduling happen in this foundation; `dispatchMultiChannel` and
- * `handleEvent` only document the shape a real implementation's inputs
- * would take.
+ * Implements every Notification API operation: creation, self-service
+ * listing/lookup, read/unread state, soft delete + restore, and an
+ * efficient unread count — all ownership-enforced, and all scoped to
+ * in-app notification *records*, never their delivery.
  *
- * Write operations accept an optional `actor: AuthenticatedUser` —
- * many notifications are system- or event-triggered rather than the
- * direct result of an authenticated request (an order-confirmation
- * email has no "actor" in the HTTP sense), so `actor` is present for
- * attribution when one exists, not required. Nothing here checks
- * `actor`'s permissions; that is `modules/rbac`'s job, applied by
- * whatever middleware sits in front of this service once it exists.
+ * This module's foundation ships extensive multi-channel delivery
+ * infrastructure — `providers/` (Resend/SendGrid, Twilio, Firebase
+ * skeletons), `templates/` (rendering), `events/` (event-driven
+ * dispatch), and the `emailProviders`/`smsProviders`/`pushProviders`
+ * registries the skeleton service constructor took. None of it is
+ * wired in here: this API's constraints explicitly exclude email/SMS/
+ * push/WebSocket delivery, Firebase, third-party notification services,
+ * background job processing, and Redis-based queues — "the API should
+ * manage notification records and state only". Every notification this
+ * service creates is `NOTIFICATION_CHANNELS.IN_APP`, which needs no
+ * provider at all: the record's existence *is* its delivery. Keeping
+ * `channel`/`templateKey`/`scheduledAt`/`retryCount`/`maxRetries`/
+ * `nextRetryAt` intact on the domain type and schema (just unused by
+ * this service's own write paths) is what "keep notification delivery
+ * provider-independent so email, SMS, push, or WebSocket delivery can
+ * be added later without changing the core notification domain" means
+ * in practice — a future delivery module extends this one, it doesn't
+ * need to reshape it.
+ *
+ * Every method takes a real `actor: AuthenticatedUser` — this module is
+ * authenticated-users-only end to end, mirroring `modules/payment`'s "no
+ * guest/public path at all". `getOwnedNotification` is this module's
+ * ownership enforcement hook, called before every read or mutation of a
+ * specific notification: one whose `userId` doesn't match `actor.id` is
+ * reported as `NotFoundError`, never `ForbiddenError`, so a request
+ * never confirms another user's notification even exists — the same
+ * treatment `modules/cart`/`modules/wishlist`/`modules/address` give a
+ * foreign resource.
  */
 export class NotificationService {
-  constructor(
-    private readonly notificationRepository: NotificationRepository,
-    private readonly emailProviders: Partial<Record<EmailProviderName, EmailProvider>>,
-    private readonly smsProviders: Partial<Record<SmsProviderName, SmsProvider>>,
-    private readonly pushProviders: Partial<Record<PushProviderName, PushProvider>>,
-  ) {}
+  constructor(private readonly notificationRepository: NotificationRepository) {}
 
-  async findById(id: string): Promise<Notification | null> {
-    throw new NotImplementedError(
-      `NotificationService.findById is not implemented yet (id: ${id})`,
+  async getById(id: string, actor: AuthenticatedUser): Promise<NotificationResponseDto> {
+    const notification = await this.getOwnedNotification(id, actor);
+    return notificationMapper.toResponseDto(notification);
+  }
+
+  async listMine(
+    actor: AuthenticatedUser,
+    query: ParsedQuery,
+    filters: NotificationFilterOptions,
+  ): Promise<PaginatedResult<NotificationResponseDto>> {
+    const result = await this.notificationRepository.findByUserId(actor.id, query, filters);
+    return { items: notificationMapper.toResponseList(result.items), meta: result.meta };
+  }
+
+  /** Always creates an in-app notification owned by `actor` — never a
+   * client-supplied `userId`/`channel`/`recipient` (see
+   * `validation/create-in-app-notification.schema.ts`'s doc comment). */
+  async create(
+    dto: CreateInAppNotificationDto,
+    actor: AuthenticatedUser,
+  ): Promise<NotificationResponseDto> {
+    const notification = await this.notificationRepository.create({
+      userId: actor.id,
+      channel: NOTIFICATION_CHANNELS.IN_APP,
+      type: dto.type,
+      priority: dto.priority,
+      subject: dto.subject ?? null,
+      body: dto.body,
+      recipient: actor.id,
+      metadata: dto.metadata ?? null,
+    });
+
+    logger.info(
+      { notificationId: notification.id, actorId: actor.id, type: notification.type },
+      "Notification created",
     );
+    return notificationMapper.toResponseDto(notification);
   }
 
-  async findByUserId(
-    userId: string,
-    _query: ParsedQuery,
-    _filters?: NotificationFilterOptions,
-  ): Promise<PaginatedResult<Notification>> {
-    throw new NotImplementedError(
-      `NotificationService.findByUserId is not implemented yet (userId: ${userId})`,
-    );
+  async markRead(id: string, actor: AuthenticatedUser): Promise<NotificationResponseDto> {
+    await this.getOwnedNotification(id, actor);
+
+    const updated = await this.notificationRepository.markRead(id);
+    logger.info({ notificationId: id, actorId: actor.id }, "Notification marked read");
+    return notificationMapper.toResponseDto(updated);
   }
 
-  async create(_dto: CreateNotificationDto, _actor?: AuthenticatedUser): Promise<Notification> {
-    throw new NotImplementedError("NotificationService.create is not implemented yet");
+  async markUnread(id: string, actor: AuthenticatedUser): Promise<NotificationResponseDto> {
+    await this.getOwnedNotification(id, actor);
+
+    const updated = await this.notificationRepository.markUnread(id);
+    logger.info({ notificationId: id, actorId: actor.id }, "Notification marked unread");
+    return notificationMapper.toResponseDto(updated);
   }
 
-  async sendEmail(_dto: SendEmailDto, _actor?: AuthenticatedUser): Promise<Notification> {
-    throw new NotImplementedError("NotificationService.sendEmail is not implemented yet");
+  async markAllRead(actor: AuthenticatedUser): Promise<MarkAllReadResponseDto> {
+    const updatedCount = await this.notificationRepository.markAllRead(actor.id);
+    logger.info({ actorId: actor.id, updatedCount }, "All notifications marked read");
+    return { updatedCount };
   }
 
-  async sendSms(_dto: SendSmsDto, _actor?: AuthenticatedUser): Promise<Notification> {
-    throw new NotImplementedError("NotificationService.sendSms is not implemented yet");
+  async delete(id: string, actor: AuthenticatedUser): Promise<void> {
+    await this.getOwnedNotification(id, actor);
+
+    await this.notificationRepository.softDelete(id);
+    logger.info({ notificationId: id, actorId: actor.id }, "Notification soft-deleted");
   }
 
-  async sendPush(_dto: SendPushDto, _actor?: AuthenticatedUser): Promise<Notification> {
-    throw new NotImplementedError("NotificationService.sendPush is not implemented yet");
+  async restore(id: string, actor: AuthenticatedUser): Promise<NotificationResponseDto> {
+    const existing = await this.getOwnedNotification(id, actor, { includeDeleted: true });
+    if (!existing.deletedAt) {
+      throw new ConflictError("Notification is not deleted");
+    }
+
+    await this.notificationRepository.restore(id);
+    const restored = await this.getOwnedNotification(id, actor);
+    logger.info({ notificationId: id, actorId: actor.id }, "Notification restored");
+    return notificationMapper.toResponseDto(restored);
   }
 
-  async sendInApp(_dto: SendInAppDto, _actor?: AuthenticatedUser): Promise<Notification> {
-    throw new NotImplementedError("NotificationService.sendInApp is not implemented yet");
+  async getUnreadCount(actor: AuthenticatedUser): Promise<UnreadCountResponseDto> {
+    const count = await this.notificationRepository.countUnread(actor.id);
+    return { count };
   }
 
-  async dispatchMultiChannel(_request: MultiChannelNotificationRequest): Promise<Notification[]> {
-    throw new NotImplementedError(
-      "NotificationService.dispatchMultiChannel is not implemented yet",
-    );
-  }
-
-  async handleEvent(event: NotificationEvent): Promise<Notification[]> {
-    throw new NotImplementedError(
-      `NotificationService.handleEvent is not implemented yet (eventType: ${event.eventType})`,
-    );
-  }
-
-  async retry(id: string): Promise<Notification> {
-    throw new NotImplementedError(`NotificationService.retry is not implemented yet (id: ${id})`);
-  }
-
-  async cancel(id: string, _actor?: AuthenticatedUser): Promise<Notification> {
-    throw new NotImplementedError(`NotificationService.cancel is not implemented yet (id: ${id})`);
+  private async getOwnedNotification(
+    id: string,
+    actor: AuthenticatedUser,
+    options?: NotificationLookupOptions,
+  ): Promise<Notification> {
+    const notification = await this.notificationRepository.findById(id, options);
+    if (!notification || notification.userId !== actor.id) {
+      throw new NotFoundError("Notification not found");
+    }
+    return notification;
   }
 }
