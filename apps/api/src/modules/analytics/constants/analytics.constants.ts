@@ -19,3 +19,32 @@ export const ANALYTICS_MAX_RANGE_DAYS_DEV = 3650;
  */
 export const REPORT_SORTABLE_FIELDS = ["createdAt", "generatedAt"] as const;
 export const REPORT_FILTERABLE_FIELDS = ["reportType", "status", "format"] as const;
+
+/**
+ * Sortable fields for each bounded, paginated ranking endpoint —
+ * `common/`'s `parseSortParams` validates the client's `sort` query
+ * param against these before it ever reaches
+ * `repository/analytics.repository.prisma.ts`'s raw `ORDER BY`, so a
+ * caller can never inject an arbitrary column/expression (see that
+ * repository's `mapSortFieldToSql` helpers).
+ */
+export const PRODUCT_PERFORMANCE_SORTABLE_FIELDS = [
+  "revenue",
+  "unitsSold",
+  "orderCount",
+  "averageSellingPrice",
+  "reviewCount",
+  "averageRating",
+] as const;
+export const CATEGORY_PERFORMANCE_SORTABLE_FIELDS = ["revenue", "unitsSold", "orderCount"] as const;
+export const CUSTOMER_PERFORMANCE_SORTABLE_FIELDS = [
+  "totalSpent",
+  "orderCount",
+  "averageOrderValue",
+] as const;
+export const COUPON_PERFORMANCE_SORTABLE_FIELDS = [
+  "redemptionCount",
+  "totalDiscountGiven",
+] as const;
+export const INVENTORY_ADJUSTMENT_SORTABLE_FIELDS = ["movementCount", "totalQuantity"] as const;
+export const PRODUCT_REVIEW_VOLUME_SORTABLE_FIELDS = ["reviewCount", "averageRating"] as const;

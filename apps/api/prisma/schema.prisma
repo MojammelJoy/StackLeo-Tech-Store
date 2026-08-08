@@ -700,6 +700,12 @@ model Order {
 
   @@index([userId])
   @@index([status])
+  /// Added for `modules/analytics`: every sales/revenue/order/customer/
+  /// product/category report filters orders by a `createdAt` date
+  /// range — the single highest-volume access pattern this table sees
+  /// outside `userId`/`status` lookups, and the only one with no
+  /// existing index to support it.
+  @@index([createdAt])
   @@map("orders")
 }
 
@@ -799,6 +805,10 @@ model Payment {
   @@index([orderId])
   @@index([userId])
   @@index([status])
+  /// Added for `modules/analytics`: revenue/payment analytics filter
+  /// payments by a `createdAt` date range (e.g. "paid amount this
+  /// month").
+  @@index([createdAt])
   @@map("payments")
 }
 
@@ -905,6 +915,9 @@ model CouponRedemption {
   @@index([couponId])
   @@index([userId])
   @@index([cartId])
+  /// Added for `modules/analytics`: "coupon usage over time" filters by
+  /// a `createdAt` date range.
+  @@index([createdAt])
   @@map("coupon_redemptions")
 }
 
@@ -984,6 +997,9 @@ model Review {
   @@index([productId, userId])
   @@index([moderationStatus])
   @@index([deletedAt])
+  /// Added for `modules/analytics`: "reviews over time" filters by a
+  /// `createdAt` date range.
+  @@index([createdAt])
   @@map("reviews")
 }
 

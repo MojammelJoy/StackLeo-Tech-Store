@@ -117,6 +117,17 @@ export const PERMISSIONS = {
   SYSTEM_SETTINGS_CREATE: "system_settings:create",
   SYSTEM_SETTINGS_UPDATE: "system_settings:update",
   SYSTEM_SETTINGS_DELETE: "system_settings:delete",
+  /** Gates every endpoint in `modules/analytics` — read-only reporting
+   * across every domain (sales/revenue/order/product/category/customer/
+   * inventory/coupon/review/payment), so one permission covers the
+   * whole module rather than a `*_READ` per domain: unlike
+   * `modules/admin` (whose domain sub-routers reuse each domain's own
+   * granular permission because they can also *write*), Analytics never
+   * writes anything, and its reports routinely blend several domains in
+   * a single response (the dashboard overview, comparisons), so
+   * per-domain gating would just mean every route requires the same set
+   * of permissions anyway. */
+  ANALYTICS_READ: "analytics:read",
 } as const;
 
 export type Permission = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
