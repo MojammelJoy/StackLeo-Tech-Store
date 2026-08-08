@@ -1,15 +1,14 @@
 /**
- * Reusable review infrastructure: domain types (`Review`, keyed to a
- * product and its author via bare FK strings — see
- * `types/review.types.ts`), DTOs + Zod validation schemas (built from
- * reusable field-level schemas in `schemas/`), the repository contract
- * (plus its currently-skeletal Prisma implementation), a skeleton
- * service, the moderation-strategy abstraction (automated/manual
- * skeletons — see `moderation/`), the review mapper, and the
- * rating-aggregation/status/helpful-vote utilities that support it all.
- * No controllers, routes, business logic, actual moderation
- * implementation, notification implementation, or media upload
- * implementation live here.
+ * The full Review API: domain types (`Review`, keyed to a product and
+ * its author via bare FK strings — see `types/review.types.ts`), DTOs +
+ * Zod validation schemas, the repository contracts (`ReviewRepository`
+ * plus its real Prisma implementation, and the read-only
+ * `ProductExistenceRepository`/`VerifiedPurchaseLookupRepository` this
+ * module uses instead of importing `modules/product`/`modules/order`),
+ * the real `ReviewService` (authoring, soft delete/restore, moderation,
+ * helpful voting, and rating aggregates), the review mapper,
+ * controllers/routes, and the rating-aggregation/status/helpful-vote
+ * utilities that support it all.
  */
 export {
   MODERATION_STATUSES,
@@ -42,9 +41,17 @@ export type {
 
 export { bodySchema, ratingSchema, reviewMediaItemSchema, titleSchema } from "./schemas";
 
-export { createReviewSchema, updateReviewSchema, voteHelpfulSchema } from "./validation";
+export {
+  createReviewSchema,
+  moderateReviewSchema,
+  productIdParamsSchema,
+  reviewIdParamsSchema,
+  updateReviewSchema,
+  voteHelpfulSchema,
+} from "./validation";
 export type {
   CreateReviewDto,
+  ModerateReviewDto,
   RatingSummaryResponseDto,
   ReviewResponseDto,
   UpdateReviewDto,
@@ -81,7 +88,21 @@ export {
   isVisible,
 } from "./utils";
 
-export { ReviewPrismaRepository } from "./repository";
-export type { ReviewRepository } from "./repository";
+export {
+  ProductExistencePrismaRepository,
+  ReviewPrismaRepository,
+  VerifiedPurchaseLookupPrismaRepository,
+} from "./repository";
+export type {
+  ProductExistenceRepository,
+  ReviewLookupOptions,
+  ReviewRepository,
+  VerifiedPurchase,
+  VerifiedPurchaseLookupRepository,
+} from "./repository";
 
 export { ReviewService } from "./service";
+
+export { ReviewController } from "./controller";
+
+export { reviewRouter } from "./routes";

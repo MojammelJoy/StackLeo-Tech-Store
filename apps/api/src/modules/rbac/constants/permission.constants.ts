@@ -74,6 +74,16 @@ export const PERMISSIONS = {
   COUPON_CREATE: "coupon:create",
   COUPON_UPDATE: "coupon:update",
   COUPON_DELETE: "coupon:delete",
+  /** Every review create/update/vote is self-service, and every listing
+   * is already visibility-scoped to `APPROVED` reviews plus the caller's
+   * own (see `modules/review/service/review.service.ts`'s
+   * `scopeFiltersForActor`) — so this single permission is the only one
+   * the module needs: it lifts that visibility scope (seeing every
+   * status, not just approved-or-own) and gates the moderator-only
+   * actions (changing `moderationStatus`, deleting/restoring someone
+   * else's review). Mirrors `ORDER_UPDATE`'s "one permission for the
+   * one staff-only capability" shape. */
+  REVIEW_MODERATE: "review:moderate",
 } as const;
 
 export type Permission = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];

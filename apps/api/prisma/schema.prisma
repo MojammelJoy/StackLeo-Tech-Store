@@ -909,23 +909,9 @@ model CouponRedemption {
 }
 
 /// A single notification record. `channel`/`type`/`priority`/`status`
-/// are plain strings, same convention as every other lifecycle-bearing
-/// model in this schema (see `Product`'s doc comment) —
-/// `modules/notification`'s own constants own the vocabulary.
-/// `userId` is a bare FK-shaped field, no relation to `User` — this
-/// module never imports `modules/user`. `isRead`/`readAt` are this
-/// module's own addition on top of the Notification Foundation's
-/// delivery-lifecycle fields (`status`/`sentAt`/`deliveredAt`/`failedAt`/
-/// `retryCount`/`maxRetries`/`nextRetryAt`/`scheduledAt`): "delivered"
-/// (has this notification reached the recipient) and "read" (has the
-/// recipient seen it) are independent dimensions — the Notification API
-/// only ever drives the latter, since it creates and manages in-app
-/// records only (see `modules/notification/service/notification.service.ts`'s
-/// doc comment) and never attempts email/SMS/push delivery. The
-/// delivery-lifecycle columns are kept exactly as the foundation defined
-/// them (unused by this API's own write paths beyond `create`) so a
-/// future delivery module can start driving them without a schema
-/// change — "keep notification delivery provider-independent".
+/// are plain strings owned by the notification module.
+/// `userId` is intentionally a bare FK-shaped field to keep
+/// cross-module boundaries decoupled.
 model Notification {
   id     String  @id @default(cuid())
   userId String? @map("user_id")
@@ -940,8 +926,6 @@ model Notification {
   body        String
   recipient   String
 
-  /// A flat string-to-string map — see
-  /// `modules/notification/types/notification.types.ts`'s `Notification.metadata`.
   metadata Json?
 
   isRead Boolean   @default(false) @map("is_read")
@@ -956,16 +940,81 @@ model Notification {
   retryCount  Int       @default(0) @map("retry_count")
   maxRetries  Int       @default(0) @map("max_retries")
   nextRetryAt DateTime? @map("next_retry_at")
+  deletedAt   DateTime? @map("deleted_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  @@index([userId])
+  @@index([userId, isRead, deletedAt])
+  @@index([status])
+  @@index([deletedAt])
+  @@map("notifications")
+}
+
+/// A shopper's review of a product.
+/// productId/userId are intentionally bare FK-shaped fields.
+model Review {
+  id        String @id @default(cuid())
+  productId String @map("product_id")
+  userId    String @map("user_id")
+
+  rating Int
+  title  String?
+  body   String
+
+  media Json @default("[]")
+
+  verifiedOrderId     String?   @map("verified_order_id")
+  verifiedOrderItemId String?   @map("verified_order_item_id")
+  verifiedAt          DateTime? @map("verified_at")
+
+  moderationStatus String @default("pending") @map("moderation_status")
+
+  helpfulCount   Int @default(0) @map("helpful_count")
+  unhelpfulCount Int @default(0) @map("unhelpful_count")
+
+  votes ReviewHelpfulVote[]
 
   deletedAt DateTime? @map("deleted_at")
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")
 
+  @@index([productId])
   @@index([userId])
-  /// Matches `NotificationRepository.countUnread`'s `WHERE` clause
-  /// exactly — "provide an efficient unread count query".
-  @@index([userId, isRead, deletedAt])
-  @@index([status])
+  @@index([productId, userId])
+  @@index([moderationStatus])
   @@index([deletedAt])
-  @@map("notifications")
+  @@map("reviews")
+}
+
+/// One user's helpful/unhelpful vote on a Review.
+model ReviewHelpfulVote {
+  id       String  @id @default(cuid())
+  reviewId String  @map("review_id")
+  review   Review  @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  userId   String  @map("user_id")
+  helpful  Boolean
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([reviewId, userId])
+  @@index([reviewId])
+  @@map("review_helpful_votes")
+}
+
+/// Cached per-product rating aggregate.
+model ReviewRatingSummary {
+  productId     String @id @map("product_id")
+  averageRating Float  @default(0) @map("average_rating")
+  totalReviews  Int    @default(0) @map("total_reviews")
+  rating1Count  Int    @default(0) @map("rating_1_count")
+  rating2Count  Int    @default(0) @map("rating_2_count")
+  rating3Count  Int    @default(0) @map("rating_3_count")
+  rating4Count  Int    @default(0) @map("rating_4_count")
+  rating5Count  Int    @default(0) @map("rating_5_count")
+
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("review_rating_summaries")
 }
