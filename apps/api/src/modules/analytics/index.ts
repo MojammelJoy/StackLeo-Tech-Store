@@ -19,8 +19,16 @@
 export {
   ANALYTICS_MAX_RANGE_DAYS_DEV,
   ANALYTICS_MAX_RANGE_DAYS_PRODUCTION,
+  CATEGORY_PERFORMANCE_SORTABLE_FIELDS,
+  COMPARISON_DOMAINS,
+  COUPON_PERFORMANCE_SORTABLE_FIELDS,
+  CUSTOMER_PERFORMANCE_SORTABLE_FIELDS,
+  DATE_RANGE_PRESETS,
+  INVENTORY_ADJUSTMENT_SORTABLE_FIELDS,
   KPI_TRENDS,
   METRIC_TYPES,
+  PRODUCT_PERFORMANCE_SORTABLE_FIELDS,
+  PRODUCT_REVIEW_VOLUME_SORTABLE_FIELDS,
   REPORT_FILTERABLE_FIELDS,
   REPORT_FORMATS,
   REPORT_SORTABLE_FIELDS,
@@ -29,6 +37,8 @@ export {
   TIME_GRANULARITIES,
 } from "./constants";
 export type {
+  ComparisonDomain,
+  DateRangePreset,
   KpiTrend,
   MetricType,
   ReportFormat,
@@ -37,21 +47,54 @@ export type {
 } from "./constants";
 
 export type {
+  CategoryPerformance,
+  ComparisonMetric,
+  ComparisonResult,
+  CouponAnalyticsSummary,
   CouponMetric,
+  CouponPerformance,
+  CustomerAnalyticsSummary,
   CustomerMetric,
+  CustomerPerformance,
+  InventoryAdjustmentRanking,
+  InventoryAnalyticsSummary,
   InventoryMetric,
+  InventoryMovementSummary,
+  InventoryMovementTypeBreakdown,
   KpiValue,
+  OrderAnalyticsSummary,
   OrderMetric,
+  OrderStatusBreakdown,
+  PaymentAnalyticsSummary,
   PaymentMetric,
+  PaymentMethodBreakdown,
+  PaymentProviderBreakdown,
+  PaymentStatusBreakdown,
+  ProductCatalogSnapshot,
   ProductMetric,
+  ProductPerformance,
+  ProductReviewVolume,
+  RatingBreakdown,
   RevenueMetric,
+  RevenueSummary,
+  ReviewAnalyticsSummary,
   SalesMetric,
+  SalesSummary,
 } from "./types";
 
 export { reportTypeSchema } from "./schemas";
 
-export { analyticsQuerySchema, metricQuerySchema, reportRequestSchema } from "./validation";
-export type { AnalyticsQueryDto } from "./dto";
+export {
+  analyticsQuerySchema,
+  comparisonQuerySchema,
+  dateRangeQuerySchema,
+  metricQuerySchema,
+  reportRequestSchema,
+} from "./validation";
+export type { AnalyticsQueryDto, ComparisonQueryDto, DateRangeQueryDto } from "./dto";
+
+export { AnalyticsController } from "./controller";
+export { analyticsRouter } from "./routes";
 
 export type { AnalyticsMapper, DateRange } from "./interfaces";
 
@@ -86,7 +129,9 @@ export {
   determineTrend,
   getDaysBetween,
   getMaxQueryRangeDays,
+  getPreviousPeriodRange,
   isValidQueryRange,
+  resolveDateRangePreset,
 } from "./utils";
 
 export { AnalyticsPrismaRepository } from "./repository";
