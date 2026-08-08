@@ -1,4 +1,5 @@
-import { NotImplementedError } from "../../../errors";
+import { ConflictError, NotFoundError } from "../../../errors";
+import { logger } from "../../../logger";
 
 import type { AuthenticatedUser } from "../../../auth";
 import type { PaginatedResult, ParsedQuery } from "../../../common";
@@ -10,71 +11,82 @@ import type { AdminRepository } from "../repository";
 import type { SystemSetting } from "../types";
 
 /**
- * Skeleton admin service — the operations a concrete implementation
- * will expose once system-setting persistence and the cross-module
- * aggregation behind `getDashboardSummary`/`getPermissionMappings`
- * exist. Depends on `AdminRepository` (interface only; see
- * `repository/`) for persistence. Every method throws
- * `NotImplementedError` — no database operations and no business rules
- * (how to compute dashboard metrics, how to resolve effective
- * permissions, how to validate a setting's value against its own past
- * type) happen in this foundation.
+ * Administers `SystemSetting` — the one domain entity this module owns
+ * outright (see `types/system-setting.types.ts`'s doc comment) — plus
+ * the two cross-cutting reads every admin panel needs: the operational
+ * dashboard summary and the static permission-mapping catalog. Depends
+ * on `AdminRepository` (interface only; see `repository/`), never on
+ * Prisma directly.
  *
- * Write operations accept `actor: AuthenticatedUser` — every admin
- * action is, by definition, performed by an authenticated staff member,
- * unlike several other foundations' guest-accessible writes — so a
- * future concrete implementation can attribute changes (audit logging;
- * see `constants/management-module.constants.ts`'s `AUDIT_LOG` entry)
- * without every call site's signature changing later. Nothing here
- * checks `actor`'s permissions; resolving whether `actor` may perform a
- * given action against a given `ManagementModulePermissionMap` entry is
- * `modules/rbac`'s job, applied by whatever middleware sits in front of
- * this service once it exists.
+ * `createSystemSetting`/`updateSystemSetting` both stamp `updatedBy`
+ * from the real authenticated `actor` — never a client-supplied value —
+ * so a setting's audit trail (who last touched it) can never be
+ * spoofed.
  */
 export class AdminService {
   constructor(private readonly adminRepository: AdminRepository) {}
 
-  async getSystemSetting(key: string): Promise<SystemSetting | null> {
-    throw new NotImplementedError(
-      `AdminService.getSystemSetting is not implemented yet (key: ${key})`,
-    );
+  async getSystemSetting(key: string): Promise<SystemSetting> {
+    const setting = await this.adminRepository.findSystemSettingByKey(key);
+    if (!setting) {
+      throw new NotFoundError("System setting not found");
+    }
+    return setting;
   }
 
   async listSystemSettings(
-    _query: ParsedQuery,
-    _filters?: SystemSettingFilterOptions,
+    query: ParsedQuery,
+    filters: SystemSettingFilterOptions,
   ): Promise<PaginatedResult<SystemSetting>> {
-    throw new NotImplementedError("AdminService.listSystemSettings is not implemented yet");
+    return this.adminRepository.findAllSystemSettings(query, filters);
   }
 
   async createSystemSetting(
-    _dto: CreateSystemSettingDto,
-    _actor: AuthenticatedUser,
+    dto: CreateSystemSettingDto,
+    actor: AuthenticatedUser,
   ): Promise<SystemSetting> {
-    throw new NotImplementedError("AdminService.createSystemSetting is not implemented yet");
+    const existing = await this.adminRepository.findSystemSettingByKey(dto.key);
+    if (existing) {
+      throw new ConflictError(`A system setting with key "${dto.key}" already exists`);
+    }
+
+    const setting = await this.adminRepository.createSystemSetting({
+      key: dto.key,
+      value: dto.value,
+      description: dto.description ?? null,
+      updatedBy: actor.id,
+    });
+    logger.info({ key: setting.key, actorId: actor.id }, "System setting created");
+    return setting;
   }
 
   async updateSystemSetting(
     key: string,
-    _dto: UpdateSystemSettingDto,
-    _actor: AuthenticatedUser,
+    dto: UpdateSystemSettingDto,
+    actor: AuthenticatedUser,
   ): Promise<SystemSetting> {
-    throw new NotImplementedError(
-      `AdminService.updateSystemSetting is not implemented yet (key: ${key})`,
-    );
+    await this.getSystemSetting(key);
+
+    const updated = await this.adminRepository.updateSystemSetting(key, {
+      ...dto,
+      updatedBy: actor.id,
+    });
+    logger.info({ key, actorId: actor.id }, "System setting updated");
+    return updated;
   }
 
-  async deleteSystemSetting(key: string, _actor: AuthenticatedUser): Promise<void> {
-    throw new NotImplementedError(
-      `AdminService.deleteSystemSetting is not implemented yet (key: ${key})`,
-    );
+  async deleteSystemSetting(key: string, actor: AuthenticatedUser): Promise<void> {
+    await this.getSystemSetting(key);
+
+    await this.adminRepository.deleteSystemSetting(key);
+    logger.info({ key, actorId: actor.id }, "System setting deleted");
   }
 
   async getDashboardSummary(): Promise<DashboardSummary> {
-    throw new NotImplementedError("AdminService.getDashboardSummary is not implemented yet");
+    return this.adminRepository.getDashboardSummary();
   }
 
   async getPermissionMappings(): Promise<ManagementModulePermissionMap[]> {
-    throw new NotImplementedError("AdminService.getPermissionMappings is not implemented yet");
+    return this.adminRepository.getPermissionMappings();
   }
 }

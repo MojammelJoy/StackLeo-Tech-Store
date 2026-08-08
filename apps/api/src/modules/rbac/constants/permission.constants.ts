@@ -84,6 +84,39 @@ export const PERMISSIONS = {
    * else's review). Mirrors `ORDER_UPDATE`'s "one permission for the
    * one staff-only capability" shape. */
   REVIEW_MODERATE: "review:moderate",
+  /** Every read/cancel on an order is self-service (see `ORDER_UPDATE`'s
+   * doc comment) — `modules/order` itself has no staff-wide "read any
+   * order" capability at all. `ORDER_READ` exists purely for
+   * `modules/admin`'s order-management surface: viewing an arbitrary
+   * customer's order/timeline/listing every order across every
+   * customer, distinct from `ORDER_UPDATE` (progressing one). */
+  ORDER_READ: "order:read",
+  /** `modules/notification` is fully self-service — a caller only ever
+   * sees their own notifications, no permission involved at all. This
+   * exists purely for `modules/admin`'s operational visibility into
+   * every user's notifications (list/inspect/summary), never a
+   * capability `modules/notification`'s own routes use. */
+  NOTIFICATION_READ: "notification:read",
+  /** `modules/payment` is fully self-service — a caller only ever sees
+   * their own payments. This exists purely for `modules/admin`'s
+   * read-only operational visibility (status summary, records by
+   * order) — never gateway integration, capture, or refund, which
+   * remain explicitly out of scope for the Admin API. */
+  PAYMENT_READ: "payment:read",
+  /** Gates `modules/admin`'s cross-domain dashboard overview — a
+   * capability that doesn't belong to any single existing domain, so it
+   * gets its own permission rather than being folded into one of the
+   * domain-specific `*_READ`s above. */
+  ADMIN_DASHBOARD_READ: "admin:dashboard:read",
+  /** `SystemSetting` (see `modules/admin`'s own foundation) is
+   * platform-wide configuration, never user- or order-scoped, so it
+   * follows the same flat `*_READ`/`*_CREATE`/`*_UPDATE`/`*_DELETE`
+   * shape as `modules/coupon`'s `COUPON_*` rather than any narrower
+   * split. */
+  SYSTEM_SETTINGS_READ: "system_settings:read",
+  SYSTEM_SETTINGS_CREATE: "system_settings:create",
+  SYSTEM_SETTINGS_UPDATE: "system_settings:update",
+  SYSTEM_SETTINGS_DELETE: "system_settings:delete",
 } as const;
 
 export type Permission = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];

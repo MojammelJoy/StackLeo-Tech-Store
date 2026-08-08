@@ -1,19 +1,20 @@
 /**
- * Reusable admin infrastructure: the one domain entity Admin actually
- * owns (`SystemSetting` — see `types/system-setting.types.ts`), DTOs +
- * Zod validation schemas built from reusable field-level schemas in
- * `schemas/`, the repository contract (plus its currently-skeletal
- * Prisma implementation), a skeleton service, the admin mapper, a
- * static catalog of the 15 management areas this app supports (see
- * `utils/management-module-catalog.util.ts`) with their default
- * action-to-permission-key mappings (see `permissions/`), decoupled
- * dashboard summary shapes (see `dashboards/`), and the
- * setting/growth-rate utilities that support it all. No controllers,
- * routes, business logic, actual dashboard aggregation, report
- * generation, or audit-log implementation live here — and no sibling
- * module (`modules/user`, `modules/product`, `modules/rbac`, etc.) is
- * ever imported, the same cross-module decoupling every foundation in
- * this app follows.
+ * The full Admin API: the one domain entity this foundation owns
+ * outright (`SystemSetting`, now with a real repository/service/
+ * controller/routes — see `types/system-setting.types.ts`), the
+ * cross-cutting dashboard summary and static permission-mapping catalog
+ * (`AdminService.getDashboardSummary`/`getPermissionMappings`, both now
+ * real), plus this module's own additional layer: a richer, task-
+ * specific dashboard overview and administrative management surfaces
+ * for users/orders/reviews/notifications/payments (each reusing its own
+ * domain module's real service/repository — see `service/`'s
+ * individual doc comments) and for products/categories/brands/
+ * inventory/coupons (each reusing its own domain module's real
+ * controller directly — see `routes/`). Unlike the rest of this app's
+ * foundations, `modules/admin` *is* meant to import sibling modules —
+ * see `repository/admin-dashboard.repository.prisma.ts`'s doc comment
+ * on why an administrative layer is the one place that's the intended
+ * reuse, not a decoupling violation.
  */
 export {
   ADMIN_ACTIONS,
@@ -62,3 +63,54 @@ export { AdminPrismaRepository } from "./repository";
 export type { AdminRepository } from "./repository";
 
 export { AdminService } from "./service";
+
+export type { DashboardOverview } from "./types";
+export type {
+  DashboardOverviewResponseDto,
+  NotificationSummaryResponseDto,
+  PaymentStatusSummaryResponseDto,
+  UpdateUserRolesDto,
+  UpdateUserStatusDto,
+} from "./dto";
+export {
+  systemSettingKeyParamsSchema,
+  updateUserRolesSchema,
+  updateUserStatusSchema,
+} from "./validation";
+
+export {
+  AdminDashboardPrismaRepository,
+  AdminOrderPrismaRepository,
+  AdminReviewPrismaRepository,
+  AdminNotificationPrismaRepository,
+  AdminPaymentPrismaRepository,
+} from "./repository";
+export type {
+  AdminDashboardRepository,
+  AdminOrderRepository,
+  AdminReviewRepository,
+  AdminNotificationRepository,
+  AdminPaymentRepository,
+  PaymentStatusSummary,
+} from "./repository";
+
+export {
+  AdminDashboardService,
+  AdminUserService,
+  AdminOrderService,
+  AdminReviewService,
+  AdminNotificationService,
+  AdminPaymentService,
+} from "./service";
+
+export {
+  AdminDashboardController,
+  AdminSystemSettingController,
+  AdminUserController,
+  AdminOrderController,
+  AdminReviewController,
+  AdminNotificationController,
+  AdminPaymentController,
+} from "./controller";
+
+export { adminRouter } from "./routes";
