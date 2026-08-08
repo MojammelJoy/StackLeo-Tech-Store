@@ -1,6 +1,7 @@
 import { Router } from "express";
 
 import { addressRouter } from "../../modules/address";
+import { adminRouter } from "../../modules/admin";
 import { AuthPrismaRepository, AuthService, authRouter } from "../../modules/auth";
 import { brandRouter } from "../../modules/brand";
 import { cartRouter } from "../../modules/cart";
@@ -70,3 +71,4 @@ v1Router.use("/payments", paymentRouter);
 v1Router.use("/coupons", couponRouter);
 v1Router.use("/notifications", notificationRouter);
 v1Router.use("/reviews", reviewRouter);
+v1Router.use("/admin", adminRouter);

@@ -1018,3 +1018,22 @@ model ReviewRatingSummary {
 
   @@map("review_rating_summaries")
 }
+
+/// A key-value configuration record admins manage directly — the one
+/// domain entity `modules/admin`'s own foundation owns (every other
+/// management area it catalogs belongs to its own module's tables).
+/// `key` is the primary key (never renamed in place — see
+/// `modules/admin/types/system-setting.types.ts`'s `UpdateSystemSettingInput`
+/// doc comment). `updatedBy` is a bare FK-shaped field, no relation to
+/// `User` — this module never imports `modules/user`.
+model SystemSetting {
+  key         String  @id
+  value       String
+  description String?
+  updatedBy   String? @map("updated_by")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("system_settings")
+}
