@@ -13,6 +13,16 @@ import type {
  * `metadata` is a flat string map for arbitrary context (e.g. an order
  * id a template placeholder needs) — deliberately not a relation to any
  * other module.
+ *
+ * `isRead`/`readAt` are this module's own addition on top of the
+ * foundation's delivery-lifecycle fields (`status`/`sentAt`/
+ * `deliveredAt`/`failedAt`/`retryCount`/`maxRetries`/`nextRetryAt`/
+ * `scheduledAt`): "delivered" (did this notification reach the
+ * recipient) and "read" (has the recipient seen it) are independent
+ * dimensions — see `service/notification.service.ts`'s doc comment for
+ * why the Notification API only ever drives the latter. `deletedAt` is
+ * likewise new — needed for "delete notification (soft delete)" /
+ * "restore notification".
  */
 export interface Notification {
   id: string;
@@ -26,6 +36,8 @@ export interface Notification {
   body: string;
   recipient: string;
   metadata: Record<string, string> | null;
+  isRead: boolean;
+  readAt: Date | null;
   scheduledAt: Date | null;
   sentAt: Date | null;
   deliveredAt: Date | null;
@@ -34,6 +46,7 @@ export interface Notification {
   retryCount: number;
   maxRetries: number;
   nextRetryAt: Date | null;
+  deletedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }

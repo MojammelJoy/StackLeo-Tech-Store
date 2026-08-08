@@ -908,24 +908,51 @@ model CouponRedemption {
   @@map("coupon_redemptions")
 }
 
-/// A shopper's review of a product. `productId`/`userId` are bare
-/// FK-shaped fields, no relation to `Product`/`User` — this module never
-/// imports `modules/product` (or vice versa), the same cross-module
-/// decoupling every foundation in this app follows. Deliberately no
-/// `@@unique([productId, userId])`: that would permanently block a user
-/// from ever reviewing the same product again after soft-deleting their
-/// first review, since the unique index would still count the deleted
-/// row — "one review per product per user" is instead enforced by
-/// `modules/review/service/review.service.ts` checking for an existing
-/// *non-deleted* review before create. `verifiedOrderId`/
-/// `verifiedOrderItemId`/`verifiedAt` are flattened from
-/// `modules/review`'s `VerifiedPurchaseReference` rather than stored as
-/// `Json` — a fixed, simple shape with no tri-state-null need (see
-/// `Coupon`'s `eligible*Ids` doc comment for when `Json` earns its
-/// complexity); all three are `null` together or set together.
-/// `moderationStatus` is a plain string, same convention as every other
-/// lifecycle-bearing model in this schema (see `Product`'s doc comment)
-/// — `modules/review`'s `MODERATION_STATUSES` owns the vocabulary.
+/// A single notification record. `channel`/`type`/`priority`/`status`
+/// are plain strings owned by the notification module.
+/// `userId` is intentionally a bare FK-shaped field to keep
+/// cross-module boundaries decoupled.
+model Notification {
+  id     String  @id @default(cuid())
+  userId String? @map("user_id")
+
+  channel  String
+  type     String
+  priority String @default("normal")
+  status   String @default("pending")
+
+  templateKey String? @map("template_key")
+  subject     String?
+  body        String
+  recipient   String
+
+  metadata Json?
+
+  isRead Boolean   @default(false) @map("is_read")
+  readAt DateTime? @map("read_at")
+
+  scheduledAt  DateTime? @map("scheduled_at")
+  sentAt       DateTime? @map("sent_at")
+  deliveredAt  DateTime? @map("delivered_at")
+  failedAt     DateTime? @map("failed_at")
+  errorMessage String?   @map("error_message")
+
+  retryCount  Int       @default(0) @map("retry_count")
+  maxRetries  Int       @default(0) @map("max_retries")
+  nextRetryAt DateTime? @map("next_retry_at")
+  deletedAt   DateTime? @map("deleted_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  @@index([userId])
+  @@index([userId, isRead, deletedAt])
+  @@index([status])
+  @@index([deletedAt])
+  @@map("notifications")
+}
+
+/// A shopper's review of a product.
+/// productId/userId are intentionally bare FK-shaped fields.
 model Review {
   id        String @id @default(cuid())
   productId String @map("product_id")
@@ -935,10 +962,6 @@ model Review {
   title  String?
   body   String
 
-  /// A JSON array of `{ mediaId, type }` — see
-  /// `modules/review/interfaces/review-media.interface.ts`'s
-  /// `ReviewMediaItem`. Always an array (defaults to `[]`), never `null`
-  /// — `Review.media` isn't nullable, unlike `Coupon`'s `eligible*Ids`.
   media Json @default("[]")
 
   verifiedOrderId     String?   @map("verified_order_id")
@@ -964,14 +987,7 @@ model Review {
   @@map("reviews")
 }
 
-/// One user's helpful/unhelpful vote on a `Review` — the ledger
-/// `ReviewRepository.castVote` reads before adjusting
-/// `Review.helpfulCount`/`unhelpfulCount`, so a user can change their
-/// vote (or resubmit the same one idempotently) without ever inflating
-/// either counter beyond one vote per user. `@@unique([reviewId,
-/// userId])` is safe here (unlike `Review`'s own productId/userId
-/// pairing) — a vote has no soft-delete concept, it's either absent or
-/// present.
+/// One user's helpful/unhelpful vote on a Review.
 model ReviewHelpfulVote {
   id       String  @id @default(cuid())
   reviewId String  @map("review_id")
@@ -987,19 +1003,7 @@ model ReviewHelpfulVote {
   @@map("review_helpful_votes")
 }
 
-/// The cached, per-product rating aggregate — "automatically update
-/// product rating statistics": every `Review` write that can change a
-/// product's visible (APPROVED, non-deleted) rating set recalculates and
-/// upserts this row inside the same `$transaction` as the write itself
-/// (see `ReviewPrismaRepository`'s private `recalculateRatingSummary`),
-/// via a Prisma aggregate/`groupBy` query — never an incremental
-/// increment/decrement, which would need separate bookkeeping for every
-/// way a review's visibility or rating can change (edit, moderate,
-/// delete, restore). Reading `GET /reviews/product/:productId/summary`
-/// is then an O(1) lookup instead of scanning every review for that
-/// product on every request. One row per product; a product with zero
-/// reviews simply has no row (see `ReviewPrismaRepository.getSummaryByProductId`'s
-/// zeroed fallback).
+/// Cached per-product rating aggregate.
 model ReviewRatingSummary {
   productId     String @id @map("product_id")
   averageRating Float  @default(0) @map("average_rating")
