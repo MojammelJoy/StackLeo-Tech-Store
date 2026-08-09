@@ -1,0 +1,23 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: light;
+  }
+
+  body {
+    @apply bg-neutral-50 text-neutral-900 antialiased;
+  }
+
+  ::selection {
+    @apply bg-primary-200 text-primary-950;
+  }
+
+  /* Visible, high-contrast focus ring for keyboard navigation, applied
+     consistently instead of relying on each component to opt in. */
+  :focus-visible {
+    @apply ring-primary-500 outline-none ring-2 ring-offset-2 ring-offset-neutral-50;
+  }
+}
