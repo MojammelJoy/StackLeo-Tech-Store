@@ -274,6 +274,7 @@ describe("OrderService", () => {
       expect(orderRepository.updateStatus).toHaveBeenCalledWith(
         "order-1",
         ORDER_STATUSES.CANCELLED,
+        ORDER_STATUSES.PENDING,
         "Cancelled by customer",
       );
     });
@@ -314,6 +315,7 @@ describe("OrderService", () => {
       expect(orderRepository.updateStatus).toHaveBeenCalledWith(
         "order-1",
         ORDER_STATUSES.CONFIRMED,
+        ORDER_STATUSES.PENDING,
         null,
       );
     });

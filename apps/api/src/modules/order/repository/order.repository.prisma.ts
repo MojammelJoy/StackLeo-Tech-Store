@@ -196,11 +196,61 @@ export class OrderPrismaRepository implements OrderRepository {
     return toDomainOrder(row);
   }
 
-  async updateStatus(id: string, status: OrderStatus, note?: string | null): Promise<Order> {
+  /**
+   * The status write is conditioned on `expectedCurrentStatus` via
+   * `updateMany`'s `WHERE`, not a plain `update` by `id` alone — the
+   * same atomic-conditional-update guard `deductInventory` below
+   * already applies to its own concurrent-write race. Without this, two
+   * concurrent calls (a duplicate cancellation double-click, or a
+   * customer's cancel racing an admin's status update) could both pass
+   * the service's read-then-decide validation
+   * (`isCancellable`/`canTransitionOrderStatus`, evaluated outside any
+   * transaction) before either has written, letting the order's status
+   * — and, when cancelling, its inventory restoration below — be
+   * applied twice. A `count === 0` result means the order's status
+   * already moved on by the time this write ran, so it throws
+   * `ConflictError` instead of silently overwriting a status this
+   * caller never actually observed.
+   *
+   * Transitioning to `ORDER_STATUSES.CANCELLED` also restores inventory
+   * for every `OrderItem` on the order (`restoreInventory`), atomically
+   * in the same transaction as the status write and the new
+   * `OrderStatusHistory` entry — the compensating counterpart to
+   * `deductInventory` in `create()` above. Because the status
+   * transition itself is guarded (only ever succeeds once per order,
+   * from a non-cancelled status), this restoration can never run twice
+   * for the same order — no separate "already restored" flag is
+   * needed.
+   */
+  async updateStatus(
+    id: string,
+    status: OrderStatus,
+    expectedCurrentStatus: OrderStatus,
+    note?: string | null,
+  ): Promise<Order> {
     const updated = await this.prismaClient.$transaction(async (tx) => {
-      const order = await tx.order.update({ where: { id }, data: { status } });
+      const result = await tx.order.updateMany({
+        where: { id, status: expectedCurrentStatus },
+        data: { status },
+      });
+      if (result.count === 0) {
+        throw new ConflictError(
+          `Order "${id}" is no longer in status "${expectedCurrentStatus}" — it may have already been updated concurrently`,
+        );
+      }
+
+      if (status === ORDER_STATUSES.CANCELLED) {
+        const items = await tx.orderItem.findMany({
+          where: { orderId: id },
+          select: { sku: true, quantity: true },
+        });
+        for (const item of items) {
+          await this.restoreInventory(tx, item.sku, item.quantity);
+        }
+      }
+
       await tx.orderStatusHistory.create({ data: { orderId: id, status, note: note ?? null } });
-      return order;
+      return tx.order.findUniqueOrThrow({ where: { id } });
     });
     return toDomainOrder(updated);
   }
@@ -337,6 +387,44 @@ export class OrderPrismaRepository implements OrderRepository {
     }
 
     throw new ConflictError(`Inventory for SKU "${sku}" changed concurrently — please try again`);
+  }
+
+  /** Restores `quantity` of `sku` back into inventory — the
+   * compensating counterpart to `deductInventory` above, run when an
+   * order transitions to `ORDER_STATUSES.CANCELLED` (see
+   * `updateStatus`). Unlike deduction, an increment has no "must not go
+   * negative" invariant to protect, so a plain `update` using Prisma's
+   * `increment` operator is already safe under concurrency — Postgres
+   * applies `SET quantity = quantity + n` as one atomic read-modify-write
+   * at the row level, immune to lost updates even without an explicit
+   * conditional guard, so no retry loop is needed here (unlike
+   * `deductInventory`'s decrement, which must additionally guard "never
+   * below zero").
+   *
+   * Restores into whichever `InventoryItem` (warehouse) row for `sku`
+   * sorts first by `id` — the same deterministic row `deductInventory`
+   * would drain from first. The schema has no record of which specific
+   * warehouse row an order's stock was originally deducted from
+   * (deduction can itself split one SKU's demand across several
+   * warehouse rows), so exact-origin restoration isn't possible without
+   * a schema change; restoring the full quantity to one row keeps the
+   * SKU's total available quantity correct, which is the invariant that
+   * matters for overselling prevention. */
+  private async restoreInventory(
+    tx: PrismaNamespace.TransactionClient,
+    sku: string,
+    quantity: number,
+  ): Promise<void> {
+    const row = await tx.inventoryItem.findFirst({ where: { sku }, orderBy: { id: "asc" } });
+    if (!row) {
+      throw new ConflictError(
+        `Cannot restore inventory for SKU "${sku}" — no inventory record exists for it`,
+      );
+    }
+    await tx.inventoryItem.update({
+      where: { id: row.id },
+      data: { quantity: { increment: quantity } },
+    });
   }
 }
 
