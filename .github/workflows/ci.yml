@@ -19,6 +19,48 @@ concurrency:
 jobs:
   lint-typecheck-test-build:
     runs-on: ubuntu-latest
+    # `apps/api`'s integration suite (`*.integration.test.ts`, see
+    # `apps/api/src/testing/integration/`) runs the real Express app
+    # against a real Postgres database instead of a mocked Prisma
+    # client — `pnpm test` (below) runs it alongside the existing
+    # mocked-Prisma unit suite in the same `vitest run` invocation
+    # (`apps/api/vitest.config.ts`'s `unit`/`integration` projects), so
+    # this job needs a real database to connect to. `apps/api/vitest.config.ts`'s
+    # `test.env` hardcodes `DATABASE_URL=postgresql://test:test@localhost:5432/stackleo_test`
+    # for every test worker (the same non-sensitive, throwaway
+    # credentials already committed in `src/testing/constants/test-env.constants.ts`
+    # — never used for anything but this local/CI test database, so a
+    # repository secret would be overkill) — this service's
+    # user/password/db must match exactly, not just be "a Postgres".
+    # Redis is deliberately NOT provisioned here: `database/redis/client.ts`
+    # constructs its client with `lazyConnect: true`, and nothing in the
+    # app's startup path this test harness exercises (`createApp()`)
+    # ever calls `connectRedis()` — the test suite never actually
+    # touches Redis.
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: stackleo_test
+        ports:
+          - 5432:5432
+        # GitHub Actions blocks every step in this job until every
+        # service passes its health check — so no separate "wait for
+        # Postgres" step is needed before the migration step below.
+        options: >-
+          --health-cmd "pg_isready -U test -d stackleo_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      # Matches the service above exactly (see the job-level comment).
+      # Only consumed by the "Apply Database Migrations" step directly
+      # below; `vitest run` itself never reads this — every test worker
+      # gets `DATABASE_URL` from `vitest.config.ts`'s `test.env`
+      # instead, which resolves to the same value.
+      DATABASE_URL: postgresql://test:test@localhost:5432/stackleo_test
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -47,6 +89,16 @@ jobs:
       # confusing downstream TS error.
       - name: Generate Prisma Client
         run: pnpm prisma generate
+
+      # Applies every migration under `apps/api/prisma/migrations/` to
+      # the fresh `postgres` service above, in order — the same
+      # non-interactive command (`prisma migrate deploy`, never
+      # `migrate dev`, which prompts) this project's own migrations were
+      # authored against. The service starts with no tables at all, so
+      # this always applies cleanly from scratch; nothing here can drift
+      # the way a long-lived local dev database can.
+      - name: Apply Database Migrations
+        run: pnpm prisma migrate deploy
 
       - name: Lint
         run: pnpm lint
