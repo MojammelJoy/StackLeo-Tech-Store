@@ -220,6 +220,7 @@ describe("PaymentService", () => {
       expect(paymentRepository.recordOutcome).toHaveBeenCalledWith(
         created.id,
         PAYMENT_STATUSES.FAILED,
+        PAYMENT_STATUSES.PENDING,
         expect.objectContaining({ errorMessage: expect.stringContaining("not implemented") }),
       );
     });
@@ -252,6 +253,7 @@ describe("PaymentService", () => {
       expect(paymentRepository.recordOutcome).toHaveBeenCalledWith(
         "payment-1",
         PAYMENT_STATUSES.CANCELLED,
+        PAYMENT_STATUSES.PENDING,
         expect.objectContaining({ type: "cancellation" }),
       );
     });

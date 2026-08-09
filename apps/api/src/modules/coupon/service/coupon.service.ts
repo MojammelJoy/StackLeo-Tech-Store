@@ -210,6 +210,7 @@ export class CouponService {
       cartId: cart.id,
       discountAmount: result.discountAmount,
       currency: cart.currency as CurrencyCode,
+      expectedUsageLimit: coupon.usageLimit,
     });
 
     logger.info(

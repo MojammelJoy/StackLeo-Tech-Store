@@ -37,9 +37,16 @@ export interface PaymentRepository {
   findAll(query: ParsedQuery, filters?: PaymentFilterOptions): Promise<PaginatedResult<Payment>>;
   create(data: CreatePaymentInput): Promise<Payment>;
   update(id: string, data: UpdatePaymentInput): Promise<Payment>;
+  /** `expectedCurrentStatus` is the payment's status as the caller last
+   * read it (and validated the transition from) — the repository
+   * conditions its update on that value still holding, atomically, so
+   * two concurrent outcome recordings for the same payment can never
+   * both succeed. See `PaymentPrismaRepository.recordOutcome`'s doc
+   * comment. */
   recordOutcome(
     id: string,
     status: PaymentStatus,
+    expectedCurrentStatus: PaymentStatus,
     transaction: Omit<CreatePaymentTransactionInput, "paymentId">,
   ): Promise<Payment>;
   findTransactionsByPaymentId(paymentId: string): Promise<PaymentTransaction[]>;
