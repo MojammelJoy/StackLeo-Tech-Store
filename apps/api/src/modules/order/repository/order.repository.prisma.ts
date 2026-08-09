@@ -26,6 +26,15 @@ import type {
   PrismaClient,
 } from "@prisma/client";
 
+/** How many times `deductInventory` re-reads and retries a specific
+ * row after losing an optimistic-concurrency race, before giving up —
+ * mirrors `modules/inventory/constants/inventory.constants.ts`'s
+ * `INVENTORY_MAX_OPTIMISTIC_RETRY_ATTEMPTS` (same value, defined
+ * locally rather than imported: this module never imports
+ * `modules/inventory`, the same cross-module decoupling every
+ * foundation in this app follows). */
+const INVENTORY_DEDUCTION_MAX_OPTIMISTIC_RETRY_ATTEMPTS = 3;
+
 /** Prisma's generated model type stores `status`/`paymentStatus`/
  * `fulfillmentStatus` as plain `string` (they're `String` columns, not
  * native Postgres enums — see `prisma/schema.prisma`'s doc comment on
@@ -265,42 +274,69 @@ export class OrderPrismaRepository implements OrderRepository {
    * row's update on the exact `quantity`/`reservedQuantity` values just
    * read from it (an inline optimistic-concurrency check — see
    * `modules/inventory`'s `version`-based equivalent for the same
-   * idea applied to its own direct mutation API). A guard mismatch
-   * (`count === 0`, meaning another transaction changed the row between
-   * this read and write) or running out of rows before `quantity` is
-   * fully satisfied both throw `ConflictError`, rolling back the whole
-   * `create` transaction — never a partial deduction. */
+   * idea applied to its own direct mutation API).
+   *
+   * A guard mismatch (`count === 0`, meaning another transaction
+   * changed that specific row between this read and write) is
+   * genuinely transient — it says nothing about whether *enough* stock
+   * actually exists, only that our stale read of one row's exact
+   * values is no longer current. So it's retried, re-reading fresh
+   * rows each attempt, up to `MAX_OPTIMISTIC_RETRY_ATTEMPTS` times —
+   * the same "re-run the read-then-write cycle against fresh state"
+   * strategy `modules/inventory/service/inventory.service.ts`'s
+   * `withOptimisticRetry` already established for its own direct
+   * mutation API (replicated locally rather than imported, matching
+   * this app's cross-module decoupling convention). `remaining` is
+   * never reset between attempts, so rows already deducted
+   * successfully in an earlier attempt are never double-decremented.
+   * Only genuine insufficient stock (every row inspected, no row-level
+   * conflict occurred, and demand still isn't covered) skips the retry
+   * loop entirely — more attempts can't manufacture inventory that
+   * doesn't exist. Either failure mode throws `ConflictError`, rolling
+   * back the whole `create` transaction — never a partial deduction. */
   private async deductInventory(
     tx: PrismaNamespace.TransactionClient,
     sku: string,
     quantity: number,
   ): Promise<void> {
     let remaining = quantity;
-    const rows = await tx.inventoryItem.findMany({ where: { sku }, orderBy: { id: "asc" } });
 
-    for (const row of rows) {
-      if (remaining <= 0) break;
+    for (
+      let attempt = 1;
+      attempt <= INVENTORY_DEDUCTION_MAX_OPTIMISTIC_RETRY_ATTEMPTS;
+      attempt += 1
+    ) {
+      const rows = await tx.inventoryItem.findMany({ where: { sku }, orderBy: { id: "asc" } });
+      let conflicted = false;
 
-      const rowAvailable = row.quantity - row.reservedQuantity;
-      if (rowAvailable <= 0) continue;
+      for (const row of rows) {
+        if (remaining <= 0) break;
 
-      const deduct = Math.min(rowAvailable, remaining);
-      const result = await tx.inventoryItem.updateMany({
-        where: { id: row.id, quantity: row.quantity, reservedQuantity: row.reservedQuantity },
-        data: { quantity: { decrement: deduct } },
-      });
+        const rowAvailable = row.quantity - row.reservedQuantity;
+        if (rowAvailable <= 0) continue;
 
-      if (result.count === 0) {
-        throw new ConflictError(
-          `Inventory for SKU "${sku}" changed concurrently — please try again`,
-        );
+        const deduct = Math.min(rowAvailable, remaining);
+        const result = await tx.inventoryItem.updateMany({
+          where: { id: row.id, quantity: row.quantity, reservedQuantity: row.reservedQuantity },
+          data: { quantity: { decrement: deduct } },
+        });
+
+        if (result.count === 0) {
+          conflicted = true;
+          break;
+        }
+        remaining -= deduct;
       }
-      remaining -= deduct;
+
+      if (remaining <= 0) {
+        return;
+      }
+      if (!conflicted) {
+        throw new ConflictError(`Insufficient stock for SKU "${sku}"`);
+      }
     }
 
-    if (remaining > 0) {
-      throw new ConflictError(`Insufficient stock for SKU "${sku}"`);
-    }
+    throw new ConflictError(`Inventory for SKU "${sku}" changed concurrently — please try again`);
   }
 }
 
