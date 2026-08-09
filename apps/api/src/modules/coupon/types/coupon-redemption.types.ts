@@ -22,11 +22,22 @@ export interface CouponRedemption {
 
 /** Repository-level creation input for `CouponRepository.applyRedemption`
  * — deliberately excludes `stackable` (read back from the joined
- * `Coupon` row, never written onto `CouponRedemption` itself). */
+ * `Coupon` row, never written onto `CouponRedemption` itself).
+ *
+ * `expectedUsageLimit` is the `Coupon.usageLimit` value
+ * `CouponService.apply` already read moments earlier while validating
+ * the coupon — passed through so the repository can make the
+ * `usageCount` increment conditional on that same limit, atomically, in
+ * the same statement. Without this, two simultaneous `apply()` calls
+ * against a `usageLimit`-capped coupon can both pass the service's
+ * read-then-decide validation before either has incremented
+ * `usageCount`, letting `usageCount` exceed `usageLimit` — see
+ * `CouponPrismaRepository.applyRedemption`'s doc comment. */
 export interface CreateCouponRedemptionInput {
   couponId: string;
   userId: string;
   cartId: string;
   discountAmount: number;
   currency: CurrencyCode;
+  expectedUsageLimit: number | null;
 }

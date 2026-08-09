@@ -2,6 +2,7 @@ import { Prisma } from "@prisma/client";
 
 import { buildPaginationMeta, getPaginationOffset } from "../../../common";
 import { prisma } from "../../../database";
+import { ConflictError } from "../../../errors";
 import { COUPON_STATUSES } from "../constants";
 
 import type { PaginatedResult, ParsedQuery, SortParam } from "../../../common";
@@ -204,14 +205,43 @@ export class CouponPrismaRepository implements CouponRepository {
    * (a usage count with no redemption row explaining it, or a redemption
    * row that never actually counted against the coupon's limit),
    * mirroring `modules/payment`'s `recordOutcome`. */
+  /**
+   * `usageCount`'s increment is conditioned on `expectedUsageLimit` —
+   * the `Coupon.usageLimit` `CouponService.apply` already read moments
+   * earlier — via `updateMany`'s `WHERE`, not a plain `update`. Without
+   * this, two simultaneous `apply()` calls against the same
+   * `usageLimit`-capped coupon can both pass the service's read-then-
+   * decide validation (`usageCount < usageLimit`, checked outside any
+   * transaction) before either has incremented `usageCount`, letting
+   * the coupon be redeemed more times than its limit allows — an
+   * unconditional `update` has no way to notice the other transaction's
+   * concurrent increment. A `count === 0` result means `usageCount`
+   * already reached the limit by the time this transaction's write ran
+   * (another concurrent redemption won the race), so it throws
+   * `ConflictError` instead of creating a redemption that would push
+   * usage over the limit — mirroring the same atomic-conditional-update
+   * fix `modules/order/repository/order.repository.prisma.ts`'s
+   * `deductInventory` applies to its own concurrent-decrement race.
+   * Unlike that inventory case, this is never retried: once the limit
+   * is genuinely reached, retrying can't create more capacity.
+   */
   async applyRedemption(
     data: CreateCouponRedemptionInput,
   ): Promise<{ coupon: Coupon; redemption: CouponRedemption }> {
     const [couponRow, redemptionRow] = await this.prismaClient.$transaction(async (tx) => {
-      const coupon = await tx.coupon.update({
-        where: { id: data.couponId },
+      const result = await tx.coupon.updateMany({
+        where:
+          data.expectedUsageLimit === null
+            ? { id: data.couponId }
+            : { id: data.couponId, usageCount: { lt: data.expectedUsageLimit } },
         data: { usageCount: { increment: 1 } },
       });
+
+      if (result.count === 0) {
+        throw new ConflictError("This coupon's usage limit was reached — please try again");
+      }
+
+      const coupon = await tx.coupon.findUniqueOrThrow({ where: { id: data.couponId } });
       const redemption = await tx.couponRedemption.create({
         data: {
           couponId: data.couponId,
