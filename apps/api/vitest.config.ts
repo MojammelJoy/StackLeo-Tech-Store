@@ -12,6 +12,8 @@ import { TEST_ENV_DEFAULTS } from "./src/testing/constants/test-env.constants";
  * once-per-run setup/teardown this foundation's tests need beyond env
  * variables.
  */
+const SHARED_EXCLUDE = ["**/node_modules/**", "**/.git/**", "**/dist/**"];
+
 export default defineConfig({
   test: {
     environment: "node",
@@ -23,7 +25,7 @@ export default defineConfig({
     // that file's `exclude`) — this is defense in depth against Vitest
     // ever double-running a test from both its `.ts` source and a stale
     // compiled `.js` copy left over in `dist/`.
-    exclude: ["**/node_modules/**", "**/.git/**", "**/dist/**"],
+    exclude: SHARED_EXCLUDE,
     // This app is still in its foundation phase — every module built so
     // far is reusable infrastructure (types, DTOs, skeleton services),
     // not yet the business logic real tests would exercise (see
@@ -34,5 +36,33 @@ export default defineConfig({
     // keeps `pnpm test` — and CI's `Test` step — green without writing
     // placeholder tests just to produce a passing exit code.
     passWithNoTests: true,
+    // Two projects sharing every setting above (`extends: true`) except
+    // which files each runs and how parallel each is:
+    //   - "unit": every existing `*.test.ts` — mocked Prisma/repos, no
+    //     real database, safe to run fully parallel across files (the
+    //     default, unchanged from before this project split existed).
+    //   - "integration": `*.integration.test.ts` — a real HTTP server
+    //     backed by the real `stackleo_test` Postgres database (see
+    //     `testing/integration/`). These all share ONE database and
+    //     each truncates it in `beforeEach` (`resetDatabase`), so
+    //     running two integration files' tests concurrently would let
+    //     one file's truncation wipe out another's in-flight fixtures —
+    //     `fileParallelism: false` forces integration files to run one
+    //     at a time (tests *within* a file still run in Vitest's normal
+    //     sequential-by-default order). Unit tests are unaffected.
+    projects: [
+      {
+        extends: true,
+        test: { name: "unit", exclude: [...SHARED_EXCLUDE, "**/*.integration.test.ts"] },
+      },
+      {
+        extends: true,
+        test: {
+          name: "integration",
+          include: ["**/*.integration.test.ts"],
+          fileParallelism: false,
+        },
+      },
+    ],
   },
 });

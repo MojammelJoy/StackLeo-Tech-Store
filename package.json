@@ -19,6 +19,8 @@
     "typecheck": "tsc -b tsconfig.json",
     "typecheck:watch": "tsc -b tsconfig.json --watch",
     "test": "pnpm -r run test",
+    "test:unit": "pnpm -r run test:unit",
+    "test:integration": "pnpm -r run test:integration",
     "prisma": "pnpm --filter @stackleo/api exec prisma",
     "clean": "pnpm -r run clean && rimraf \"**/.turbo\" \"**/dist\" \"**/.next\" \"**/coverage\" --glob",
     "prepare": "husky",
