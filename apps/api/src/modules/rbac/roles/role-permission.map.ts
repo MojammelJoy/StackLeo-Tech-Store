@@ -106,7 +106,17 @@ export const ROLE_PERMISSIONS: RolePermissionMap = {
   // unlike those modules, inventory has no public-facing subset at all
   // (see `PERMISSIONS.INVENTORY_READ`'s doc comment) — a member has no
   // inventory access whatsoever, the same as an anonymous caller.
-  [ROLES.MEMBER]: [PERMISSIONS.USER_READ],
+  // `USER_READ` is absent too: its only consumer anywhere in this app
+  // is `modules/admin`'s bulk user list/get-by-id
+  // (`admin-user.routes.ts`) — an admin-only capability (browsing every
+  // account's email/roles/active status). It was previously granted
+  // here with no consumer that justified it, which let any registered
+  // member enumerate the entire user base through those admin routes —
+  // a real information-disclosure bug found via integration testing,
+  // not a deliberate grant (see git history for this comment). A member
+  // reading their *own* profile goes through `modules/user`'s own
+  // routes, which require no permission at all beyond `authenticate`.
+  [ROLES.MEMBER]: [],
 };
 
 /**
