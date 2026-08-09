@@ -1,5 +1,6 @@
 import { buildPaginationMeta, getPaginationOffset } from "../../../common";
 import { prisma } from "../../../database";
+import { ConflictError } from "../../../errors";
 import { PAYMENT_STATUSES, PAYMENT_TRANSACTION_STATUSES } from "../constants";
 import { formatPaymentReference, parsePaymentReference } from "../utils";
 
@@ -170,14 +171,35 @@ export class PaymentPrismaRepository implements PaymentRepository {
    * appropriate": these two writes must never be observed independently
    * (a status change with no record of why, or a transaction row for a
    * status the payment was never actually moved to). */
+  /** The `status` update is conditioned on `expectedCurrentStatus` via
+   * `updateMany`'s `WHERE`, not a plain `update` by `id` alone. Without
+   * this, two concurrent outcome recordings for the same payment (e.g.
+   * two simultaneous "mark collected" calls, or a retried gateway
+   * callback racing a user-initiated cancel) can both pass the
+   * service's read-then-decide status-transition check
+   * (`canTransitionPaymentStatus`/`isCancellable`, evaluated outside
+   * any transaction) before either has written, letting the payment be
+   * "captured" twice — two `PaymentTransaction` rows recording the same
+   * money movement as if it happened twice. A `count === 0` result
+   * means another transaction already changed the status away from
+   * `expectedCurrentStatus` by the time this write ran, so it throws
+   * `ConflictError` instead of recording a second, contradictory
+   * outcome — the same atomic-conditional-update fix
+   * `modules/order/repository/order.repository.prisma.ts`'s
+   * `deductInventory` and `modules/coupon/repository/coupon.repository.prisma.ts`'s
+   * `applyRedemption` already apply to their own concurrent-write
+   * races. Never retried: once the status has genuinely moved on,
+   * retrying the same outcome doesn't make sense — the caller re-reads
+   * and re-validates from scratch on their next request instead. */
   async recordOutcome(
     id: string,
     status: PaymentStatus,
+    expectedCurrentStatus: PaymentStatus,
     transaction: Omit<CreatePaymentTransactionInput, "paymentId">,
   ): Promise<Payment> {
     const updated = await this.prismaClient.$transaction(async (tx) => {
-      const payment = await tx.payment.update({
-        where: { id },
+      const result = await tx.payment.updateMany({
+        where: { id, status: expectedCurrentStatus },
         data: {
           status,
           ...(transaction.providerRef !== undefined
@@ -185,6 +207,13 @@ export class PaymentPrismaRepository implements PaymentRepository {
             : {}),
         },
       });
+
+      if (result.count === 0) {
+        throw new ConflictError(
+          `Payment "${id}" is no longer in status "${expectedCurrentStatus}" — it may have already been updated concurrently`,
+        );
+      }
+
       await tx.paymentTransaction.create({
         data: {
           paymentId: id,
@@ -196,7 +225,7 @@ export class PaymentPrismaRepository implements PaymentRepository {
           errorMessage: transaction.errorMessage ?? null,
         },
       });
-      return payment;
+      return tx.payment.findUniqueOrThrow({ where: { id } });
     });
     return toDomainPayment(updated);
   }

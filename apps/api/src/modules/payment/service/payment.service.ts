@@ -227,7 +227,7 @@ export class PaymentService {
           ? PAYMENT_STATUSES.SUCCEEDED
           : PAYMENT_STATUSES.FAILED;
 
-      const updated = await this.paymentRepository.recordOutcome(id, status, {
+      const updated = await this.paymentRepository.recordOutcome(id, status, payment.status, {
         type: PAYMENT_TRANSACTION_TYPES.VERIFICATION,
         status: result.status,
         amount: result.amount,
@@ -238,13 +238,18 @@ export class PaymentService {
       return paymentMapper.toResponseDto(updated);
     } catch (error) {
       const message = this.describeError(error);
-      const updated = await this.paymentRepository.recordOutcome(id, PAYMENT_STATUSES.FAILED, {
-        type: PAYMENT_TRANSACTION_TYPES.VERIFICATION,
-        status: PAYMENT_TRANSACTION_STATUSES.FAILED,
-        amount: { amount: payment.amount, currency: payment.currency },
-        providerRef: dto.providerRef,
-        errorMessage: message,
-      });
+      const updated = await this.paymentRepository.recordOutcome(
+        id,
+        PAYMENT_STATUSES.FAILED,
+        payment.status,
+        {
+          type: PAYMENT_TRANSACTION_TYPES.VERIFICATION,
+          status: PAYMENT_TRANSACTION_STATUSES.FAILED,
+          amount: { amount: payment.amount, currency: payment.currency },
+          providerRef: dto.providerRef,
+          errorMessage: message,
+        },
+      );
       logger.warn({ paymentId: id, error: message }, "Payment verification failed");
       return paymentMapper.toResponseDto(updated);
     }
@@ -264,12 +269,17 @@ export class PaymentService {
       throw new ConflictError(`Payment in status "${payment.status}" can no longer be cancelled`);
     }
 
-    const updated = await this.paymentRepository.recordOutcome(id, PAYMENT_STATUSES.CANCELLED, {
-      type: PAYMENT_TRANSACTION_TYPES.CANCELLATION,
-      status: PAYMENT_TRANSACTION_STATUSES.SUCCEEDED,
-      amount: { amount: payment.amount, currency: payment.currency },
-      errorMessage: dto.reason ?? null,
-    });
+    const updated = await this.paymentRepository.recordOutcome(
+      id,
+      PAYMENT_STATUSES.CANCELLED,
+      payment.status,
+      {
+        type: PAYMENT_TRANSACTION_TYPES.CANCELLATION,
+        status: PAYMENT_TRANSACTION_STATUSES.SUCCEEDED,
+        amount: { amount: payment.amount, currency: payment.currency },
+        errorMessage: dto.reason ?? null,
+      },
+    );
     logger.info({ paymentId: id, actorId: actor.id }, "Payment cancelled");
     return paymentMapper.toResponseDto(updated);
   }
@@ -290,11 +300,16 @@ export class PaymentService {
       throw new ConflictError(`Payment in status "${payment.status}" cannot be marked collected`);
     }
 
-    const updated = await this.paymentRepository.recordOutcome(id, PAYMENT_STATUSES.SUCCEEDED, {
-      type: PAYMENT_TRANSACTION_TYPES.CAPTURE,
-      status: PAYMENT_TRANSACTION_STATUSES.SUCCEEDED,
-      amount: { amount: payment.amount, currency: payment.currency },
-    });
+    const updated = await this.paymentRepository.recordOutcome(
+      id,
+      PAYMENT_STATUSES.SUCCEEDED,
+      payment.status,
+      {
+        type: PAYMENT_TRANSACTION_TYPES.CAPTURE,
+        status: PAYMENT_TRANSACTION_STATUSES.SUCCEEDED,
+        amount: { amount: payment.amount, currency: payment.currency },
+      },
+    );
     logger.info({ paymentId: id, actorId: actor.id }, "Cash-on-delivery payment marked collected");
     return paymentMapper.toResponseDto(updated);
   }
@@ -365,6 +380,7 @@ export class PaymentService {
       const updated = await this.paymentRepository.recordOutcome(
         payment.id,
         PAYMENT_STATUSES.PROCESSING,
+        payment.status,
         {
           type: PAYMENT_TRANSACTION_TYPES.AUTHORIZATION,
           status: result.status,
@@ -379,6 +395,7 @@ export class PaymentService {
       const updated = await this.paymentRepository.recordOutcome(
         payment.id,
         PAYMENT_STATUSES.FAILED,
+        payment.status,
         {
           type: PAYMENT_TRANSACTION_TYPES.AUTHORIZATION,
           status: PAYMENT_TRANSACTION_STATUSES.FAILED,
