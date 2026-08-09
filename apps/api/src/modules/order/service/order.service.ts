@@ -185,6 +185,7 @@ export class OrderService {
     const updated = await this.orderRepository.updateStatus(
       id,
       ORDER_STATUSES.CANCELLED,
+      order.status,
       dto.note ?? "Cancelled by customer",
     );
     logger.info({ orderId: id, actorId: actor.id }, "Order cancelled");
@@ -208,7 +209,12 @@ export class OrderService {
       throw new ConflictError(`Order cannot move from "${order.status}" to "${dto.status}"`);
     }
 
-    const updated = await this.orderRepository.updateStatus(id, dto.status, dto.note ?? null);
+    const updated = await this.orderRepository.updateStatus(
+      id,
+      dto.status,
+      order.status,
+      dto.note ?? null,
+    );
     logger.info(
       { orderId: id, from: order.status, to: dto.status, actorId: actor.id },
       "Order status updated",

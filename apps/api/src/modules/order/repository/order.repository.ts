@@ -51,7 +51,28 @@ export interface OrderRepository {
    * pre-check. */
   create(data: CreateOrderInput): Promise<Order>;
   update(id: string, data: UpdateOrderInput): Promise<Order>;
-  updateStatus(id: string, status: OrderStatus, note?: string | null): Promise<Order>;
+  /** `expectedCurrentStatus` is the order's status as the caller last
+   * read it (and validated the transition from) — the repository
+   * conditions its write on that value still holding, atomically, so
+   * two concurrent status changes for the same order (e.g. a duplicate
+   * cancellation request, or a cancel racing an admin status update)
+   * can never both succeed. A `count === 0` guard mismatch means
+   * another transaction already changed the order's status since it
+   * was last read; the caller must re-fetch and re-validate rather than
+   * having this silently overwrite a status it never actually observed.
+   *
+   * When `status` is `ORDER_STATUSES.CANCELLED`, this also restores
+   * inventory for every `OrderItem` on the order, atomically in the
+   * same transaction as the status write and history entry — see
+   * `OrderPrismaRepository.updateStatus`'s doc comment. Because the
+   * status transition itself is guarded as above, this can never run
+   * twice for the same cancellation. */
+  updateStatus(
+    id: string,
+    status: OrderStatus,
+    expectedCurrentStatus: OrderStatus,
+    note?: string | null,
+  ): Promise<Order>;
   updatePaymentStatus(id: string, status: PaymentStatus): Promise<Order>;
   updateFulfillmentStatus(id: string, status: FulfillmentStatus): Promise<Order>;
 
