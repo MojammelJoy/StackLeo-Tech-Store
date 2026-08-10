@@ -11,3 +11,10 @@ export type {
   UpdateCartItemRequest,
 } from "./cart";
 export type { Category, CategoryStatus, CategoryVisibility } from "./category";
+export type {
+  BulkProductLookupItem,
+  BulkProductLookupResponse,
+  ProductDisplayImage,
+  ProductStatus,
+  ProductVisibility,
+} from "./product";

@@ -1,10 +1,10 @@
 import type { SVGProps } from "react";
 
 /**
- * Minimal hand-written line icons for the storefront chrome (header/nav).
- * Kept local instead of pulling in an icon library — the header needs
- * exactly five icons today, well below the point where a dependency pays
- * for itself.
+ * Minimal hand-written line icons for the storefront chrome (header/nav)
+ * and cart UI. Kept local instead of pulling in an icon library — a
+ * handful of icons, well below the point where a dependency pays for
+ * itself.
  */
 
 export function SearchIcon(props: SVGProps<SVGSVGElement>) {
@@ -92,6 +92,60 @@ export function CloseIcon(props: SVGProps<SVGSVGElement>) {
       {...props}
     >
       <path d="M6 6l12 12M18 6 6 18" />
+    </svg>
+  );
+}
+
+export function PlusIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.75}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      {...props}
+    >
+      <path d="M12 5v14M5 12h14" />
+    </svg>
+  );
+}
+
+export function MinusIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.75}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      {...props}
+    >
+      <path d="M5 12h14" />
+    </svg>
+  );
+}
+
+export function TrashIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.75}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      {...props}
+    >
+      <path d="M4 7h16" />
+      <path d="M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+      <path d="M6 7l1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13" />
+      <path d="M10 11v6M14 11v6" />
     </svg>
   );
 }

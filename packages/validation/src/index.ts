@@ -6,3 +6,4 @@ export {
   updateCartItemSchema,
 } from "./cart.schema";
 export { categoryListSchema, categorySchema } from "./category.schema";
+export { bulkProductLookupItemSchema, bulkProductLookupResponseSchema } from "./product.schema";
