@@ -5,12 +5,14 @@ import { validateRequest } from "../../../common";
 import { PERMISSIONS, requirePermission } from "../../rbac";
 import { ProductController } from "../controller";
 import {
+  ProductImageLookupPrismaRepository,
   ProductPrismaRepository,
   ProductSpecificationPrismaRepository,
   ProductVariantPrismaRepository,
 } from "../repository";
 import { ProductService } from "../service";
 import {
+  bulkProductQuerySchema,
   createProductSchema,
   createProductVariantSchema,
   productIdParamsSchema,
@@ -26,10 +28,12 @@ import {
 const productRepository = new ProductPrismaRepository();
 const variantRepository = new ProductVariantPrismaRepository();
 const specificationRepository = new ProductSpecificationPrismaRepository();
+const productImageLookupRepository = new ProductImageLookupPrismaRepository();
 const productService = new ProductService(
   productRepository,
   variantRepository,
   specificationRepository,
+  productImageLookupRepository,
 );
 const productController = new ProductController(productService);
 
@@ -41,6 +45,12 @@ const productController = new ProductController(productService);
  * for anyone without `product:read` (see `service/product.service.ts`).
  * Every mutating endpoint requires authentication plus the matching
  * `product:*` permission.
+ *
+ * `/slug/:slug` and `/bulk` are registered before `/:id`: all three are
+ * exactly one path segment under `/products`, so `/:id` would otherwise
+ * capture "slug"/"bulk" as an id (Express matches equally-specific paths
+ * in registration order, not by literal-vs-param specificity) — same
+ * reasoning as `modules/category`'s `/tree` vs `/:id`.
  */
 export const productRouter: Router = Router();
 
@@ -50,6 +60,12 @@ productRouter.get(
   extractCurrentUser,
   validateRequest({ params: productSlugParamsSchema }),
   productController.getBySlug,
+);
+productRouter.get(
+  "/bulk",
+  extractCurrentUser,
+  validateRequest({ query: bulkProductQuerySchema }),
+  productController.listBulk,
 );
 
 productRouter.post(

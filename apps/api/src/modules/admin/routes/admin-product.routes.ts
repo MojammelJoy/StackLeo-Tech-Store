@@ -4,6 +4,7 @@ import { authenticate } from "../../../auth";
 import { validateRequest } from "../../../common";
 import {
   ProductController,
+  ProductImageLookupPrismaRepository,
   ProductPrismaRepository,
   ProductService,
   ProductSpecificationPrismaRepository,
@@ -19,10 +20,12 @@ import { PERMISSIONS, requirePermission } from "../../rbac";
 const productRepository = new ProductPrismaRepository();
 const productVariantRepository = new ProductVariantPrismaRepository();
 const productSpecificationRepository = new ProductSpecificationPrismaRepository();
+const productImageLookupRepository = new ProductImageLookupPrismaRepository();
 const productService = new ProductService(
   productRepository,
   productVariantRepository,
   productSpecificationRepository,
+  productImageLookupRepository,
 );
 const productController = new ProductController(productService);
 

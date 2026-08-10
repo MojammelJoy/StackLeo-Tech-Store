@@ -65,3 +65,13 @@ export const PRODUCT_SORTABLE_FIELDS = ["name", "price", "createdAt", "updatedAt
  * endpoint instead reads dedicated `priceMin`/`priceMax` query params
  * directly — see `controller/product.controller.ts`. */
 export const PRODUCT_FILTERABLE_FIELDS = ["categoryId", "status", "visibility", "tags"] as const;
+
+/**
+ * Maximum number of ids a single `GET /products/bulk` request may
+ * request at once — matches `common/`'s own `PAGINATION_DEFAULTS.MAX_LIMIT`
+ * (apps/api/src/common/constants/api.constants.ts), the project's
+ * existing convention for "how many rows can one list-shaped request
+ * touch." Checked against the raw requested count, before
+ * de-duplication, so repeating one id can't be used to dodge the limit.
+ */
+export const PRODUCT_BULK_LOOKUP_MAX_IDS = 100;

@@ -1,3 +1,4 @@
+export { bulkProductQuerySchema } from "./bulk-product-query.schema";
 export { createProductSchema } from "./create-product.schema";
 export { createProductVariantSchema } from "./create-product-variant.schema";
 export { productIdParamsSchema } from "./product-id-params.schema";

@@ -1,3 +1,5 @@
+export type { BulkProductQueryDto } from "./bulk-product-query.dto";
+export type { BulkProductResponseDto, ProductDisplayImageDto } from "./bulk-product-response.dto";
 export type { CreateProductDto } from "./create-product.dto";
 export type { CreateProductVariantDto } from "./create-product-variant.dto";
 export type { ProductResponseDto, ProductSummaryResponseDto } from "./product-response.dto";

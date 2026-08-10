@@ -67,6 +67,19 @@ export class ProductPrismaRepository implements ProductRepository {
     return toDomainProduct(row);
   }
 
+  async findManyByIds(ids: string[], options: ProductLookupOptions = {}): Promise<Product[]> {
+    if (ids.length === 0) {
+      return [];
+    }
+    const rows = await this.prismaClient.product.findMany({
+      where: {
+        id: { in: ids },
+        ...(options.includeDeleted ? {} : { deletedAt: null }),
+      },
+    });
+    return toDomainProductList(rows);
+  }
+
   async findAll(
     query: ParsedQuery,
     filters: ProductFilterOptions = {},

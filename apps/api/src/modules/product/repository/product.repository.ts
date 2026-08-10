@@ -32,6 +32,11 @@ export interface ProductLookupOptions {
 export interface ProductRepository {
   findById(id: string, options?: ProductLookupOptions): Promise<Product | null>;
   findBySlug(slug: string, options?: ProductLookupOptions): Promise<Product | null>;
+  /** One query for every id in `ids` (`WHERE id IN (...)`) — never one
+   * query per id. Returned in database order, not `ids`' order; callers
+   * that need requested-order should re-order themselves (see
+   * `ProductService.listByIds`). */
+  findManyByIds(ids: string[], options?: ProductLookupOptions): Promise<Product[]>;
   findAll(query: ParsedQuery, filters?: ProductFilterOptions): Promise<PaginatedResult<Product>>;
   findAllCursor(
     params: CursorPaginationParams,

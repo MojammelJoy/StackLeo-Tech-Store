@@ -1,5 +1,6 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 
+import { prisma } from "../../database";
 import {
   TestHttpClient,
   elevateToAdmin,
@@ -130,5 +131,264 @@ describe("product (integration)", () => {
     // defaults rather than 400ing) — see common/utils/sorting.utils.ts;
     // the important guarantee is that it never 500s or leaks a raw error.
     expect(response.status).toBe(200);
+  });
+
+  describe("GET /products/bulk", () => {
+    it("returns visible products for an anonymous caller in requested-id order", async () => {
+      const admin = await registerAndLoginTestUser(server.baseUrl);
+      await elevateToAdmin(admin);
+
+      const first = await admin.client.post<{ data: { product: { id: string } } }>(
+        "/api/v1/products",
+        buildProductPayload(),
+      );
+      const second = await admin.client.post<{ data: { product: { id: string } } }>(
+        "/api/v1/products",
+        buildProductPayload(),
+      );
+      const firstId = first.body.data.product.id;
+      const secondId = second.body.data.product.id;
+
+      const anon = new TestHttpClient(server.baseUrl);
+      // Requested in reverse-creation order, to prove response order
+      // follows the request — not creation/database order.
+      const response = await anon.get<{
+        success: boolean;
+        data: { products: Array<{ id: string }> };
+        meta: { requestId: string; timestamp: string };
+      }>(`/api/v1/products/bulk?ids=${secondId},${firstId}`);
+
+      expect(response.status).toBe(200);
+      expect(response.body.success).toBe(true);
+      expect(response.body.data.products.map((product) => product.id)).toEqual([secondId, firstId]);
+      expect(response.body.meta.requestId).toBeTruthy();
+    });
+
+    it("collapses duplicate ids to a single product in the response", async () => {
+      const admin = await registerAndLoginTestUser(server.baseUrl);
+      await elevateToAdmin(admin);
+      const created = await admin.client.post<{ data: { product: { id: string } } }>(
+        "/api/v1/products",
+        buildProductPayload(),
+      );
+      const id = created.body.data.product.id;
+
+      const anon = new TestHttpClient(server.baseUrl);
+      const response = await anon.get<{ data: { products: Array<{ id: string }> } }>(
+        `/api/v1/products/bulk?ids=${id},${id},${id}`,
+      );
+
+      expect(response.status).toBe(200);
+      expect(response.body.data.products).toHaveLength(1);
+    });
+
+    it("does not fail the whole request when some requested ids don't exist", async () => {
+      const admin = await registerAndLoginTestUser(server.baseUrl);
+      await elevateToAdmin(admin);
+      const created = await admin.client.post<{ data: { product: { id: string } } }>(
+        "/api/v1/products",
+        buildProductPayload(),
+      );
+      const id = created.body.data.product.id;
+
+      const anon = new TestHttpClient(server.baseUrl);
+      const response = await anon.get<{ data: { products: Array<{ id: string }> } }>(
+        `/api/v1/products/bulk?ids=${id},nonexistent-id-1,nonexistent-id-2`,
+      );
+
+      expect(response.status).toBe(200);
+      expect(response.body.data.products.map((product) => product.id)).toEqual([id]);
+    });
+
+    it("hides draft, private, and deleted products from an anonymous caller", async () => {
+      const admin = await registerAndLoginTestUser(server.baseUrl);
+      await elevateToAdmin(admin);
+
+      const visible = await admin.client.post<{ data: { product: { id: string } } }>(
+        "/api/v1/products",
+        buildProductPayload(),
+      );
+      const draft = await admin.client.post<{ data: { product: { id: string } } }>(
+        "/api/v1/products",
+        buildProductPayload({ status: "draft" }),
+      );
+      const privateProduct = await admin.client.post<{ data: { product: { id: string } } }>(
+        "/api/v1/products",
+        buildProductPayload({ visibility: "private" }),
+      );
+      const deleted = await admin.client.post<{ data: { product: { id: string } } }>(
+        "/api/v1/products",
+        buildProductPayload(),
+      );
+      await admin.client.delete(`/api/v1/products/${deleted.body.data.product.id}`);
+
+      const ids = [visible, draft, privateProduct, deleted]
+        .map((response) => response.body.data.product.id)
+        .join(",");
+
+      const anon = new TestHttpClient(server.baseUrl);
+      const response = await anon.get<{ data: { products: Array<{ id: string }> } }>(
+        `/api/v1/products/bulk?ids=${ids}`,
+      );
+
+      expect(response.status).toBe(200);
+      expect(response.body.data.products.map((product) => product.id)).toEqual([
+        visible.body.data.product.id,
+      ]);
+    });
+
+    it("rejects a missing ids query parameter", async () => {
+      const anon = new TestHttpClient(server.baseUrl);
+      const response = await anon.get("/api/v1/products/bulk");
+      expect(response.status).toBe(400);
+    });
+
+    it("rejects an empty ids query parameter", async () => {
+      const anon = new TestHttpClient(server.baseUrl);
+      const response = await anon.get("/api/v1/products/bulk?ids=");
+      expect(response.status).toBe(400);
+    });
+
+    it("rejects ids containing an empty entry", async () => {
+      const admin = await registerAndLoginTestUser(server.baseUrl);
+      await elevateToAdmin(admin);
+      const created = await admin.client.post<{ data: { product: { id: string } } }>(
+        "/api/v1/products",
+        buildProductPayload(),
+      );
+      const id = created.body.data.product.id;
+
+      const anon = new TestHttpClient(server.baseUrl);
+      const response = await anon.get(`/api/v1/products/bulk?ids=${id},,`);
+      expect(response.status).toBe(400);
+    });
+
+    it("does not shadow GET /products/:id — an unrelated id-shaped path still 404s normally", async () => {
+      // Regression guard for the /bulk-before-/:id route-ordering
+      // requirement (see routes/product.routes.ts's doc comment).
+      const anon = new TestHttpClient(server.baseUrl);
+      const response = await anon.get("/api/v1/products/definitely-not-a-real-id");
+      expect(response.status).toBe(404);
+    });
+
+    describe("image attachment", () => {
+      it("returns the earliest-created ready product_image, and null when none exists", async () => {
+        const admin = await registerAndLoginTestUser(server.baseUrl);
+        await elevateToAdmin(admin);
+
+        const withImage = await admin.client.post<{ data: { product: { id: string } } }>(
+          "/api/v1/products",
+          buildProductPayload(),
+        );
+        const withoutImage = await admin.client.post<{ data: { product: { id: string } } }>(
+          "/api/v1/products",
+          buildProductPayload(),
+        );
+        const withImageId = withImage.body.data.product.id;
+        const withoutImageId = withoutImage.body.data.product.id;
+
+        // Two product_image assets for the same product, created a
+        // moment apart — the earlier one must win, per the documented
+        // deterministic rule (see repository/product-image-lookup.repository.prisma.ts).
+        const older = await prisma.mediaAsset.create({
+          data: {
+            fileName: "older.jpg",
+            mimeType: "image/jpeg",
+            sizeBytes: 100,
+            url: "https://example.com/older.jpg",
+            provider: "local",
+            providerRef: "older-ref",
+            purpose: "product_image",
+            ownerType: "product",
+            ownerId: withImageId,
+            altText: "Older image",
+            status: "ready",
+            createdAt: new Date("2026-01-01T00:00:00.000Z"),
+          },
+        });
+        await prisma.mediaAsset.create({
+          data: {
+            fileName: "newer.jpg",
+            mimeType: "image/jpeg",
+            sizeBytes: 100,
+            url: "https://example.com/newer.jpg",
+            provider: "local",
+            providerRef: "newer-ref",
+            purpose: "product_image",
+            ownerType: "product",
+            ownerId: withImageId,
+            altText: "Newer image",
+            status: "ready",
+            createdAt: new Date("2026-01-02T00:00:00.000Z"),
+          },
+        });
+        // A non-`ready` asset for the "no image" product — must never be
+        // selected.
+        await prisma.mediaAsset.create({
+          data: {
+            fileName: "pending.jpg",
+            mimeType: "image/jpeg",
+            sizeBytes: 100,
+            url: "https://example.com/pending.jpg",
+            provider: "local",
+            providerRef: "pending-ref",
+            purpose: "product_image",
+            ownerType: "product",
+            ownerId: withoutImageId,
+            status: "pending",
+          },
+        });
+
+        const anon = new TestHttpClient(server.baseUrl);
+        const response = await anon.get<{
+          data: {
+            products: Array<{
+              id: string;
+              image: { id: string; url: string; altText: string | null } | null;
+            }>;
+          };
+        }>(`/api/v1/products/bulk?ids=${withImageId},${withoutImageId}`);
+
+        expect(response.status).toBe(200);
+        const [productWithImage, productWithoutImage] = response.body.data.products;
+        expect(productWithImage?.image).toEqual({
+          id: older.id,
+          url: "https://example.com/older.jpg",
+          altText: "Older image",
+        });
+        expect(productWithoutImage?.image).toBeNull();
+      });
+
+      it("resolves images for many products without one query per product", async () => {
+        const admin = await registerAndLoginTestUser(server.baseUrl);
+        await elevateToAdmin(admin);
+
+        const created = await Promise.all(
+          Array.from({ length: 10 }, () =>
+            admin.client.post<{ data: { product: { id: string } } }>(
+              "/api/v1/products",
+              buildProductPayload(),
+            ),
+          ),
+        );
+        const ids = created.map((response) => response.body.data.product.id);
+
+        const anon = new TestHttpClient(server.baseUrl);
+        const start = Date.now();
+        const response = await anon.get<{ data: { products: unknown[] } }>(
+          `/api/v1/products/bulk?ids=${ids.join(",")}`,
+        );
+        const durationMs = Date.now() - start;
+
+        expect(response.status).toBe(200);
+        expect(response.body.data.products).toHaveLength(10);
+        // Not a strict proof of query count — that's
+        // `service/product.service.test.ts`'s job via mocked call-count
+        // assertions. This is a generous ceiling that only guards
+        // against an accidental N+1 regression making the endpoint
+        // scale linearly with request size.
+        expect(durationMs).toBeLessThan(2000);
+      });
+    });
   });
 });

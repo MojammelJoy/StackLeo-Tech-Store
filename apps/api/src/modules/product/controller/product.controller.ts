@@ -9,11 +9,13 @@ import {
 import { BadRequestError, UnauthorizedError } from "../../../errors";
 import { asyncHandler } from "../../../utils";
 import { PRODUCT_FILTERABLE_FIELDS, PRODUCT_SORTABLE_FIELDS } from "../constants";
+import { parseBulkProductIds } from "../utils";
 
 import type { AuthenticatedUser } from "../../../auth";
 import type { ParsedQuery } from "../../../common";
 import type { ProductStatus, ProductVisibility } from "../constants";
 import type {
+  BulkProductQueryDto,
   CreateProductDto,
   CreateProductVariantDto,
   ReplaceProductSpecificationsDto,
@@ -144,6 +146,19 @@ export class ProductController {
     const slug = requireParam(req, "slug");
     const product = await this.productService.getBySlug(slug, req.user ?? null);
     sendSuccess(res, { product });
+  });
+
+  /** `req.query` has already been replaced with `bulkProductQuerySchema`'s
+   * parsed output (a guaranteed-present, non-empty CSV string) by
+   * `validateRequest` — see `routes/product.routes.ts`. `parseBulkProductIds`
+   * does the actual split/array-level validation (see its own doc
+   * comment for why that isn't a zod `.transform()` on the query schema
+   * itself). */
+  listBulk = asyncHandler(async (req, res) => {
+    const dto = req.query as unknown as BulkProductQueryDto;
+    const ids = parseBulkProductIds(dto.ids);
+    const products = await this.productService.listByIds(ids, req.user ?? null);
+    sendSuccess(res, { products });
   });
 
   create = asyncHandler(async (req, res) => {

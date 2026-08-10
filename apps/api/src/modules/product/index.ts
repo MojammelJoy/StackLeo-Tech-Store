@@ -10,6 +10,7 @@
  * payment) — those stay out of this module.
  */
 export {
+  PRODUCT_BULK_LOOKUP_MAX_IDS,
   PRODUCT_CURRENCY_CODE_LENGTH,
   PRODUCT_DESCRIPTION_MAX_LENGTH,
   PRODUCT_FILTERABLE_FIELDS,
@@ -49,6 +50,7 @@ export type {
 } from "./types";
 
 export {
+  bulkProductQuerySchema,
   createProductSchema,
   createProductVariantSchema,
   productIdParamsSchema,
@@ -64,8 +66,11 @@ export {
 } from "./validation";
 
 export type {
+  BulkProductQueryDto,
+  BulkProductResponseDto,
   CreateProductDto,
   CreateProductVariantDto,
+  ProductDisplayImageDto,
   ProductResponseDto,
   ProductSpecificationResponseDto,
   ProductSummaryResponseDto,
@@ -84,12 +89,15 @@ export { productMapper } from "./mapper";
 export { generateUniqueSlug, slugify } from "./utils";
 
 export type {
+  ProductDisplayImage,
+  ProductImageLookupRepository,
   ProductLookupOptions,
   ProductRepository,
   ProductSpecificationRepository,
   ProductVariantRepository,
 } from "./repository";
 export {
+  ProductImageLookupPrismaRepository,
   ProductPrismaRepository,
   ProductSpecificationPrismaRepository,
   ProductVariantPrismaRepository,

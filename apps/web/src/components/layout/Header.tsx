@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useState } from "react";
 
 import { useCurrentUser } from "../../hooks/use-auth";
+import { useCart } from "../../hooks/use-cart";
 
 import { CartIcon, CloseIcon, MenuIcon, SearchIcon, UserIcon } from "./icons";
 import { Logo } from "./Logo";
@@ -27,6 +28,8 @@ const ICON_LINK_CLASSES =
 export function Header() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { data: user } = useCurrentUser();
+  const { data: cart } = useCart();
+  const cartItemCount = cart?.summary.itemCount ?? 0;
 
   return (
     <header className="sticky top-0 z-40 border-b border-neutral-200 bg-white/95 backdrop-blur">
@@ -79,8 +82,13 @@ export function Header() {
           >
             <UserIcon className="h-5 w-5" />
           </Link>
-          <Link href="/cart" aria-label="Cart" className={ICON_LINK_CLASSES}>
+          <Link href="/cart" aria-label="Cart" className={`${ICON_LINK_CLASSES} relative`}>
             <CartIcon className="h-5 w-5" />
+            {cartItemCount > 0 ? (
+              <span className="bg-primary-600 absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-semibold leading-none text-white">
+                {cartItemCount > 99 ? "99+" : cartItemCount}
+              </span>
+            ) : null}
           </Link>
         </div>
       </Container>

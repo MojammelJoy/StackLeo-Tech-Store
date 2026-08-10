@@ -13,6 +13,7 @@ import type {
   ParsedQuery,
 } from "../../../common";
 import type {
+  BulkProductResponseDto,
   CreateProductDto,
   CreateProductVariantDto,
   ProductResponseDto,
@@ -27,6 +28,7 @@ import type {
 } from "../dto";
 import type { ProductFilterOptions } from "../interfaces";
 import type {
+  ProductImageLookupRepository,
   ProductRepository,
   ProductSpecificationRepository,
   ProductVariantRepository,
@@ -56,6 +58,7 @@ export class ProductService {
     private readonly productRepository: ProductRepository,
     private readonly variantRepository: ProductVariantRepository,
     private readonly specificationRepository: ProductSpecificationRepository,
+    private readonly productImageLookup: ProductImageLookupRepository,
   ) {}
 
   async list(
@@ -95,6 +98,55 @@ export class ProductService {
       throw new NotFoundError("Product not found");
     }
     return this.toFullResponse(product);
+  }
+
+  /**
+   * Resolves multiple products by id in one query
+   * (`ProductRepository.findManyByIds`) plus one query for their display
+   * images (`ProductImageLookupRepository.findDisplayImagesByProductIds`)
+   * — never one query per product, regardless of how many ids are
+   * requested. Duplicate ids collapse to a single entry. An id that
+   * doesn't exist, or isn't visible to `actor`, is silently omitted
+   * rather than failing the whole request — storefront consumers
+   * (cart, wishlist) need "whatever's still available," not an
+   * all-or-nothing lookup. Returned in the order `ids` first mentions
+   * each product, not database order.
+   */
+  async listByIds(
+    ids: string[],
+    actor: AuthenticatedUser | null,
+  ): Promise<BulkProductResponseDto[]> {
+    const uniqueIds = [...new Set(ids)];
+    const canBypass = this.canBypassVisibilityScope(actor);
+
+    const products = await this.productRepository.findManyByIds(uniqueIds, {
+      includeDeleted: canBypass,
+    });
+    const visible = canBypass
+      ? products
+      : products.filter((product) => this.isVisibleTo(product, false));
+
+    if (visible.length === 0) {
+      return [];
+    }
+
+    const images = await this.productImageLookup.findDisplayImagesByProductIds(
+      visible.map((product) => product.id),
+    );
+
+    const byId = new Map(visible.map((product) => [product.id, product]));
+    const ordered: Product[] = [];
+    for (const id of uniqueIds) {
+      const product = byId.get(id);
+      if (product) {
+        ordered.push(product);
+      }
+    }
+
+    return ordered.map((product) => ({
+      ...productMapper.toSummaryDto(product),
+      image: images.get(product.id) ?? null,
+    }));
   }
 
   async create(dto: CreateProductDto, actor: AuthenticatedUser): Promise<ProductResponseDto> {
