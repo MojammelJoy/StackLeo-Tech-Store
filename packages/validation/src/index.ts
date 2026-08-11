@@ -6,4 +6,12 @@ export {
   updateCartItemSchema,
 } from "./cart.schema";
 export { categoryListSchema, categorySchema } from "./category.schema";
-export { bulkProductLookupItemSchema, bulkProductLookupResponseSchema } from "./product.schema";
+export { mediaAssetSchema, mediaByOwnerResponseSchema } from "./media.schema";
+export {
+  bulkProductLookupItemSchema,
+  bulkProductLookupResponseSchema,
+  productDetailResponseSchema,
+  productDetailSchema,
+  productSpecificationSchema,
+  productVariantSchema,
+} from "./product.schema";

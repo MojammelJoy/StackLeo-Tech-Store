@@ -1,4 +1,4 @@
-import { formatMoney } from "./format-money";
+import { formatMoney } from "../../lib/format-money";
 
 import type { CartSummary as CartSummaryType } from "@stackleo/types";
 

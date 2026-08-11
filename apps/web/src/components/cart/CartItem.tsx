@@ -1,11 +1,12 @@
 "use client";
 
 import { Skeleton } from "@stackleo/ui";
+import Link from "next/link";
 
 import { useRemoveCartItem, useUpdateCartItem } from "../../hooks/use-cart";
+import { formatMoney } from "../../lib/format-money";
 import { CartIcon, TrashIcon } from "../layout/icons";
 
-import { formatMoney } from "./format-money";
 import { QuantityStepper } from "./QuantityStepper";
 
 import type { BulkProductLookupItem, CartItem as CartItemType } from "@stackleo/types";
@@ -75,6 +76,13 @@ export function CartItemRow({ item, product, isProductInfoLoading, currency }: C
         <div className="min-w-0">
           {isProductInfoLoading ? (
             <Skeleton className="h-5 w-40" />
+          ) : product?.slug ? (
+            <Link
+              href={`/products/${product.slug}`}
+              className="truncate font-medium text-neutral-900 hover:underline"
+            >
+              {displayName}
+            </Link>
           ) : (
             <p className="truncate font-medium text-neutral-900">{displayName}</p>
           )}
