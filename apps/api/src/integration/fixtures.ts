@@ -54,6 +54,37 @@ export async function createSellableProduct(
   return created.body.data.product;
 }
 
+export interface TestProductVariant {
+  id: string;
+  productId: string;
+  sku: string;
+  price: number | null;
+  currency: string | null;
+  isActive: boolean;
+}
+
+export async function createProductVariant(
+  admin: RegisteredTestUser,
+  productId: string,
+  overrides: Record<string, unknown> = {},
+): Promise<TestProductVariant> {
+  const unique = randomTestId("variant");
+  const payload = {
+    sku: `VARIANT-SKU-${unique}`,
+    name: `Test Variant ${unique}`,
+    attributes: { color: "Red" },
+    ...overrides,
+  };
+  const response = await admin.client.post<{ data: { variant: TestProductVariant } }>(
+    `/api/v1/products/${productId}/variants`,
+    payload,
+  );
+  if (response.status !== 201) {
+    throw new Error(`Failed to create test product variant: ${JSON.stringify(response.body)}`);
+  }
+  return response.body.data.variant;
+}
+
 export async function stockProduct(
   admin: RegisteredTestUser,
   sku: string,

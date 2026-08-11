@@ -492,17 +492,21 @@ model Cart {
   @@map("carts")
 }
 
-/// A single product line within a `Cart`. `productId` is a bare
-/// foreign-key-shaped field — no relation to `Product`, mirroring
-/// `Cart.userId`'s convention above; `sku`/`unitPrice` are snapshotted
-/// at add-time (see `modules/cart/types/cart-item.types.ts`'s `CartItem`
-/// doc comment) — `modules/cart/service/cart.service.ts` recomputes
-/// totals from the *current* product price at read time instead of
-/// trusting this snapshot, so a price change elsewhere is still
-/// reflected without this column needing to change. Unique per
-/// `(cartId, productId)` — a cart never has two rows for the same
-/// product; adding an already-present product increments this row's
-/// `quantity` instead (see `CartPrismaRepository.addItem`).
+/// A single product (or product variant) line within a `Cart`.
+/// `productId` is a bare foreign-key-shaped field — no relation to
+/// `Product`, mirroring `Cart.userId`'s convention above; `sku`/
+/// `unitPrice` are snapshotted at add-time (see
+/// `modules/cart/types/cart-item.types.ts`'s `CartItem` doc comment) —
+/// `modules/cart/service/cart.service.ts` recomputes totals from the
+/// *current* product/variant price at read time instead of trusting
+/// this snapshot, so a price change elsewhere is still reflected
+/// without this column needing to change. Unique per `(cartId, sku)` —
+/// `sku` (never bare `productId`) is a line's real identity, since
+/// `Product.sku`/`ProductVariant.sku` share one globally-unique
+/// namespace (see `ProductVariant`'s doc comment): two different
+/// variants of the *same* product are two different, coexisting lines;
+/// adding an already-present sku (base or variant) increments that
+/// row's `quantity` instead (see `CartPrismaRepository.addItem`).
 model CartItem {
   id        String  @id @default(cuid())
   cartId    String  @map("cart_id")
@@ -517,7 +521,7 @@ model CartItem {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  @@unique([cartId, productId])
+  @@unique([cartId, sku])
   @@index([cartId])
   @@map("cart_items")
 }

@@ -1,9 +1,14 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 
 import { prisma } from "../database";
-import { registerAndLoginTestUser, resetDatabase, startTestServer } from "../testing/integration";
+import {
+  TestHttpClient,
+  registerAndLoginTestUser,
+  resetDatabase,
+  startTestServer,
+} from "../testing/integration";
 
-import { createAdmin, createSellableProduct, stockProduct } from "./fixtures";
+import { createAdmin, createProductVariant, createSellableProduct, stockProduct } from "./fixtures";
 
 import type { RegisteredTestUser, TestServer } from "../testing/integration";
 
@@ -140,6 +145,262 @@ describe("cart + coupon (integration)", () => {
       );
       expect(removed.status).toBe(200);
       expect(removed.body.data.cart.items).toHaveLength(0);
+    });
+  });
+
+  describe("cart variants", () => {
+    it("adds an active variant using the variant's own sku and price", async () => {
+      const staff = await freshAdmin();
+      const product = await createSellableProduct(staff, { price: 2500 });
+      const variant = await createProductVariant(staff, product.id, { price: 4200 });
+      await stockProduct(staff, variant.sku, 10);
+
+      const { client } = await registerAndLoginTestUser(server.baseUrl);
+      const response = await client.post<{
+        data: {
+          cart: {
+            items: Array<{ productId: string; sku: string; unitPrice: number; quantity: number }>;
+            summary: { total: number };
+          };
+        };
+      }>("/api/v1/cart/items", { productId: product.id, sku: variant.sku, quantity: 1 });
+
+      expect(response.status).toBe(201);
+      expect(response.body.data.cart.items).toHaveLength(1);
+      expect(response.body.data.cart.items[0].sku).toBe(variant.sku);
+      expect(response.body.data.cart.items[0].unitPrice).toBe(4200);
+      expect(response.body.data.cart.summary.total).toBe(4200);
+    });
+
+    it("falls back to the base product's price when the variant has no price override", async () => {
+      const staff = await freshAdmin();
+      const product = await createSellableProduct(staff, { price: 2500 });
+      const variant = await createProductVariant(staff, product.id, { price: null });
+      await stockProduct(staff, variant.sku, 10);
+
+      const { client } = await registerAndLoginTestUser(server.baseUrl);
+      const response = await client.post<{
+        data: { cart: { items: Array<{ unitPrice: number }> } };
+      }>("/api/v1/cart/items", { productId: product.id, sku: variant.sku, quantity: 1 });
+
+      expect(response.status).toBe(201);
+      expect(response.body.data.cart.items[0].unitPrice).toBe(2500);
+    });
+
+    it("rejects an inactive variant", async () => {
+      const staff = await freshAdmin();
+      const product = await createSellableProduct(staff);
+      const variant = await createProductVariant(staff, product.id, { isActive: false });
+      await stockProduct(staff, variant.sku, 10);
+
+      const { client } = await registerAndLoginTestUser(server.baseUrl);
+      const response = await client.post("/api/v1/cart/items", {
+        productId: product.id,
+        sku: variant.sku,
+        quantity: 1,
+      });
+
+      expect(response.status).toBe(404);
+    });
+
+    it("rejects a variant sku that doesn't exist for the product", async () => {
+      const staff = await freshAdmin();
+      const product = await createSellableProduct(staff);
+
+      const { client } = await registerAndLoginTestUser(server.baseUrl);
+      const response = await client.post("/api/v1/cart/items", {
+        productId: product.id,
+        sku: "NO-SUCH-VARIANT-SKU",
+        quantity: 1,
+      });
+
+      expect(response.status).toBe(400);
+    });
+
+    it("rejects adding a variant beyond its own available stock", async () => {
+      const staff = await freshAdmin();
+      const product = await createSellableProduct(staff);
+      const variant = await createProductVariant(staff, product.id);
+      await stockProduct(staff, variant.sku, 2);
+
+      const { client } = await registerAndLoginTestUser(server.baseUrl);
+      const response = await client.post("/api/v1/cart/items", {
+        productId: product.id,
+        sku: variant.sku,
+        quantity: 3,
+      });
+
+      expect(response.status).toBe(409);
+    });
+
+    it("supports quantity updates on a variant line", async () => {
+      const staff = await freshAdmin();
+      const product = await createSellableProduct(staff);
+      const variant = await createProductVariant(staff, product.id);
+      await stockProduct(staff, variant.sku, 10);
+
+      const { client } = await registerAndLoginTestUser(server.baseUrl);
+      const added = await client.post<{ data: { cart: { items: Array<{ id: string }> } } }>(
+        "/api/v1/cart/items",
+        { productId: product.id, sku: variant.sku, quantity: 1 },
+      );
+      const itemId = added.body.data.cart.items[0].id;
+
+      const updated = await client.patch<{
+        data: { cart: { items: Array<{ quantity: number }> } };
+      }>(`/api/v1/cart/items/${itemId}`, { quantity: 5 });
+
+      expect(updated.status).toBe(200);
+      expect(updated.body.data.cart.items[0].quantity).toBe(5);
+    });
+
+    it("keeps two different variants of the same product as separate cart lines", async () => {
+      const staff = await freshAdmin();
+      const product = await createSellableProduct(staff);
+      const variantA = await createProductVariant(staff, product.id, {
+        sku: `VARIANT-A-${product.sku}`,
+      });
+      const variantB = await createProductVariant(staff, product.id, {
+        sku: `VARIANT-B-${product.sku}`,
+      });
+      await stockProduct(staff, variantA.sku, 10);
+      await stockProduct(staff, variantB.sku, 10);
+
+      const { client } = await registerAndLoginTestUser(server.baseUrl);
+      await client.post("/api/v1/cart/items", {
+        productId: product.id,
+        sku: variantA.sku,
+        quantity: 1,
+      });
+      await client.post("/api/v1/cart/items", {
+        productId: product.id,
+        sku: variantB.sku,
+        quantity: 1,
+      });
+
+      const cart = await client.get<{ data: { cart: { items: Array<{ sku: string }> } } }>(
+        "/api/v1/cart",
+      );
+
+      expect(cart.body.data.cart.items).toHaveLength(2);
+      expect(cart.body.data.cart.items.map((item) => item.sku).sort()).toEqual(
+        [variantA.sku, variantB.sku].sort(),
+      );
+    });
+
+    it("still exposes the base product's own sku unchanged (no regression)", async () => {
+      const staff = await freshAdmin();
+      const product = await createSellableProduct(staff, { price: 1800 });
+      await stockProduct(staff, product.sku, 10);
+
+      const { client } = await registerAndLoginTestUser(server.baseUrl);
+      const response = await client.post<{
+        data: { cart: { items: Array<{ sku: string; unitPrice: number }> } };
+      }>("/api/v1/cart/items", { productId: product.id, sku: product.sku, quantity: 1 });
+
+      expect(response.status).toBe(201);
+      expect(response.body.data.cart.items[0].sku).toBe(product.sku);
+      expect(response.body.data.cart.items[0].unitPrice).toBe(1800);
+    });
+  });
+
+  describe("guest cart", () => {
+    it("creates a guest cart and adds a base product via the guest token header", async () => {
+      const staff = await freshAdmin();
+      const product = await createSellableProduct(staff, { price: 3000 });
+      await stockProduct(staff, product.sku, 10);
+
+      const anon = new TestHttpClient(server.baseUrl);
+      const created = await anon.post<{ data: { cart: { guestToken: string } } }>(
+        "/api/v1/cart/guest",
+        {},
+      );
+      expect(created.status).toBe(201);
+      const guestToken = created.body.data.cart.guestToken;
+      expect(guestToken).toBeTruthy();
+
+      const added = await anon.post<{
+        data: { cart: { items: Array<{ sku: string; unitPrice: number }> } };
+      }>(
+        "/api/v1/cart/items",
+        { productId: product.id, sku: product.sku, quantity: 1 },
+        { "x-guest-token": guestToken },
+      );
+      expect(added.status).toBe(201);
+      expect(added.body.data.cart.items[0].sku).toBe(product.sku);
+
+      const fetched = await anon.get<{ data: { cart: { items: unknown[] } } }>("/api/v1/cart", {
+        "x-guest-token": guestToken,
+      });
+      expect(fetched.status).toBe(200);
+      expect(fetched.body.data.cart.items).toHaveLength(1);
+    });
+
+    it("adds an active variant to a guest cart via the guest token header", async () => {
+      const staff = await freshAdmin();
+      const product = await createSellableProduct(staff);
+      const variant = await createProductVariant(staff, product.id, { price: 5500 });
+      await stockProduct(staff, variant.sku, 10);
+
+      const anon = new TestHttpClient(server.baseUrl);
+      const created = await anon.post<{ data: { cart: { guestToken: string } } }>(
+        "/api/v1/cart/guest",
+        {},
+      );
+      const guestToken = created.body.data.cart.guestToken;
+
+      const added = await anon.post<{
+        data: { cart: { items: Array<{ sku: string; unitPrice: number }> } };
+      }>(
+        "/api/v1/cart/items",
+        { productId: product.id, sku: variant.sku, quantity: 1 },
+        { "x-guest-token": guestToken },
+      );
+
+      expect(added.status).toBe(201);
+      expect(added.body.data.cart.items[0].sku).toBe(variant.sku);
+      expect(added.body.data.cart.items[0].unitPrice).toBe(5500);
+    });
+
+    it("rejects a cart request with neither a session nor a guest token", async () => {
+      const anon = new TestHttpClient(server.baseUrl);
+      const response = await anon.get("/api/v1/cart");
+      expect(response.status).toBe(400);
+    });
+
+    it("merges a guest cart's variant line into the authenticated user's cart after login", async () => {
+      const staff = await freshAdmin();
+      const product = await createSellableProduct(staff);
+      const variant = await createProductVariant(staff, product.id, { price: 1234 });
+      await stockProduct(staff, variant.sku, 10);
+
+      const anon = new TestHttpClient(server.baseUrl);
+      const guestCreated = await anon.post<{ data: { cart: { guestToken: string } } }>(
+        "/api/v1/cart/guest",
+        {},
+      );
+      const guestToken = guestCreated.body.data.cart.guestToken;
+      await anon.post(
+        "/api/v1/cart/items",
+        { productId: product.id, sku: variant.sku, quantity: 2 },
+        { "x-guest-token": guestToken },
+      );
+
+      const { client } = await registerAndLoginTestUser(server.baseUrl);
+      const merged = await client.post<{
+        data: { cart: { items: Array<{ sku: string; quantity: number; unitPrice: number }> } };
+      }>("/api/v1/cart/merge", undefined, { "x-guest-token": guestToken });
+
+      expect(merged.status).toBe(200);
+      expect(merged.body.data.cart.items).toHaveLength(1);
+      expect(merged.body.data.cart.items[0].sku).toBe(variant.sku);
+      expect(merged.body.data.cart.items[0].quantity).toBe(2);
+      expect(merged.body.data.cart.items[0].unitPrice).toBe(1234);
+
+      // The guest cart's own view is now merged — its token no longer
+      // resolves an active cart.
+      const guestAfterMerge = await anon.get("/api/v1/cart", { "x-guest-token": guestToken });
+      expect(guestAfterMerge.status).toBe(404);
     });
   });
 

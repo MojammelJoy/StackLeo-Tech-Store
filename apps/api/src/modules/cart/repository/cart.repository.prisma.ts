@@ -142,16 +142,16 @@ export class CartPrismaRepository implements CartRepository {
     return row ? toDomainCartItem(row) : null;
   }
 
-  async findItemByCartAndProduct(cartId: string, productId: string): Promise<CartItem | null> {
+  async findItemByCartAndSku(cartId: string, sku: string): Promise<CartItem | null> {
     const row = await this.prismaClient.cartItem.findUnique({
-      where: { cartId_productId: { cartId, productId } },
+      where: { cartId_sku: { cartId, sku } },
     });
     return row ? toDomainCartItem(row) : null;
   }
 
   async addItem(data: CreateCartItemInput): Promise<CartItem> {
     const row = await this.prismaClient.cartItem.upsert({
-      where: { cartId_productId: { cartId: data.cartId, productId: data.productId } },
+      where: { cartId_sku: { cartId: data.cartId, sku: data.sku } },
       create: {
         cartId: data.cartId,
         productId: data.productId,
@@ -189,7 +189,7 @@ export class CartPrismaRepository implements CartRepository {
     const merged = await this.prismaClient.$transaction(async (tx) => {
       for (const item of params.items) {
         await tx.cartItem.upsert({
-          where: { cartId_productId: { cartId: params.targetCartId, productId: item.productId } },
+          where: { cartId_sku: { cartId: params.targetCartId, sku: item.sku } },
           create: {
             cartId: params.targetCartId,
             productId: item.productId,

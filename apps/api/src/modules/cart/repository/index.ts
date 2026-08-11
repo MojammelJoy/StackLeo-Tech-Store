@@ -5,4 +5,5 @@ export { ProductAvailabilityPrismaRepository } from "./product-availability.repo
 export type {
   ProductAvailabilityRepository,
   ProductAvailabilitySnapshot,
+  ProductVariantAvailabilitySnapshot,
 } from "./product-availability.repository";

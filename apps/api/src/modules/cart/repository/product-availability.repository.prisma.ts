@@ -3,8 +3,13 @@ import { prisma } from "../../../database";
 import type {
   ProductAvailabilityRepository,
   ProductAvailabilitySnapshot,
+  ProductVariantAvailabilitySnapshot,
 } from "./product-availability.repository";
-import type { PrismaClient, Product as PrismaProduct } from "@prisma/client";
+import type {
+  PrismaClient,
+  Product as PrismaProduct,
+  ProductVariant as PrismaProductVariant,
+} from "@prisma/client";
 
 function toSnapshot(row: PrismaProduct): ProductAvailabilitySnapshot {
   return {
@@ -15,6 +20,17 @@ function toSnapshot(row: PrismaProduct): ProductAvailabilitySnapshot {
     status: row.status,
     visibility: row.visibility,
     deletedAt: row.deletedAt,
+  };
+}
+
+function toVariantSnapshot(row: PrismaProductVariant): ProductVariantAvailabilitySnapshot {
+  return {
+    id: row.id,
+    productId: row.productId,
+    sku: row.sku,
+    price: row.price,
+    currency: row.currency,
+    isActive: row.isActive,
   };
 }
 
@@ -40,6 +56,23 @@ export class ProductAvailabilityPrismaRepository implements ProductAvailabilityR
       where: { id: { in: productIds } },
     });
     return new Map(rows.map((row) => [row.id, toSnapshot(row)]));
+  }
+
+  async findVariantBySku(sku: string): Promise<ProductVariantAvailabilitySnapshot | null> {
+    const row = await this.prismaClient.productVariant.findUnique({ where: { sku } });
+    return row ? toVariantSnapshot(row) : null;
+  }
+
+  async findManyVariantsBySkus(
+    skus: string[],
+  ): Promise<Map<string, ProductVariantAvailabilitySnapshot>> {
+    if (skus.length === 0) {
+      return new Map();
+    }
+    const rows = await this.prismaClient.productVariant.findMany({
+      where: { sku: { in: skus } },
+    });
+    return new Map(rows.map((row) => [row.sku, toVariantSnapshot(row)]));
   }
 
   /** `quantity`/`reservedQuantity` are summed across every

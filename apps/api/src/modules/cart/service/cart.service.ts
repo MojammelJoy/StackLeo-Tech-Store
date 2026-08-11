@@ -13,6 +13,7 @@ import type {
   CartRepository,
   ProductAvailabilityRepository,
   ProductAvailabilitySnapshot,
+  ProductVariantAvailabilitySnapshot,
 } from "../repository";
 import type { Cart, CartItem, MergeCartItemInput } from "../types";
 
@@ -24,15 +25,24 @@ import type { Cart, CartItem, MergeCartItemInput } from "../types";
 const SELLABLE_PRODUCT_STATUS = "active";
 const SELLABLE_PRODUCT_VISIBILITY = "public";
 
+/** What a `(productId, sku)` pair resolved to — the line's real sku
+ * (unchanged for a base product, the variant's own for a variant) and
+ * its effective price/currency. */
+interface ResolvedCartLine {
+  sku: string;
+  price: number;
+  currency: string;
+}
+
 /**
  * Implements every Cart API operation: guest/authenticated cart
- * lookup and creation, item add/update/remove/clear, guest-cart merge
- * after login, current-price-aware totals, and admin listing
- * (pagination/filtering). Depends on `CartRepository` (cart/item
- * persistence) and `ProductAvailabilityRepository` (read-only product/
- * inventory facts — see that interface's doc comment for why this
- * exists instead of importing `modules/product`/`modules/inventory`
- * directly) — interfaces only, never Prisma directly.
+ * lookup and creation, item add/update/remove/clear (base-product or
+ * active-variant SKU), guest-cart merge after login, current-price-aware
+ * totals, and admin listing (pagination/filtering). Depends on
+ * `CartRepository` (cart/item persistence) and `ProductAvailabilityRepository`
+ * (read-only product/variant/inventory facts — see that interface's doc
+ * comment for why this exists instead of importing `modules/product`/
+ * `modules/inventory` directly) — interfaces only, never Prisma directly.
  *
  * Every mutating method takes `actor: AuthenticatedUser | null` and
  * enforces ownership itself (`assertCanMutateCart`) rather than
@@ -103,13 +113,22 @@ export class CartService {
     return this.buildCartResponse(cart);
   }
 
+  /**
+   * `dto.sku` may be either the product's own sku or one of its active
+   * variants' skus — resolved by `resolveSellableLine`, which also
+   * decides the effective price (see that method's doc comment).
+   * `findItemByCartAndSku` (not `findByCartAndProduct` — a cart's real
+   * line identity is `sku`, see `prisma/schema.prisma`'s `CartItem` doc
+   * comment) means two different variants of the same product become
+   * two separate lines, never merged.
+   */
   async addItem(
     cartId: string,
     dto: AddCartItemDto,
     actor: AuthenticatedUser | null,
   ): Promise<CartResponseDto> {
     const cart = await this.getOwnedCart(cartId, actor);
-    const existing = await this.cartRepository.findItemByCartAndProduct(cartId, dto.productId);
+    const existing = await this.cartRepository.findItemByCartAndSku(cartId, dto.sku);
     const existingQuantity = existing?.quantity ?? 0;
     const finalQuantity = existingQuantity + dto.quantity;
 
@@ -119,19 +138,19 @@ export class CartService {
       );
     }
 
-    const snapshot = await this.assertSellable(dto.productId, dto.sku, cart.currency);
-    await this.assertStockAvailable(snapshot.sku, finalQuantity);
+    const resolved = await this.resolveSellableLine(dto.productId, dto.sku, cart.currency);
+    await this.assertStockAvailable(resolved.sku, finalQuantity);
 
     await this.cartRepository.addItem({
       cartId,
       productId: dto.productId,
-      sku: snapshot.sku,
+      sku: resolved.sku,
       quantity: finalQuantity,
-      unitPrice: snapshot.price,
+      unitPrice: resolved.price,
     });
 
     logger.info(
-      { cartId, productId: dto.productId, quantity: finalQuantity },
+      { cartId, productId: dto.productId, sku: resolved.sku, quantity: finalQuantity },
       existing ? "Cart item quantity updated" : "Cart item added",
     );
     return this.buildCartResponse(cart);
@@ -146,6 +165,9 @@ export class CartService {
     const cart = await this.getOwnedCart(item.cartId, actor);
 
     if (dto.quantity !== undefined) {
+      // `item.sku` is already whatever this line's real sku is (base
+      // product or variant) — stock is always checked against that
+      // exact sku, no resolution needed here.
       await this.assertStockAvailable(item.sku, dto.quantity);
     }
 
@@ -191,13 +213,13 @@ export class CartService {
    * Folds `guestCartId`'s items into `actor`'s active cart (creating
    * one first if they don't have one yet), then marks the guest cart
    * `MERGED`. Unlike `addItem`, an individual item that's gone stale
-   * since the guest added it (product deleted/unpublished, currency
-   * mismatch, no stock left) is *dropped from the merge* rather than
-   * failing the whole operation — there's no interactive caller to
-   * surface a per-item error to during a post-login reconciliation
-   * step; a partially-clamped/skipped merge is the useful outcome, a
-   * failed login-time merge is not. Every resolved item is written
-   * atomically via `CartRepository.mergeItemsIntoCart`.
+   * since the guest added it (product/variant deleted/unpublished/
+   * deactivated, currency mismatch, no stock left) is *dropped from the
+   * merge* rather than failing the whole operation — there's no
+   * interactive caller to surface a per-item error to during a
+   * post-login reconciliation step; a partially-clamped/skipped merge
+   * is the useful outcome, a failed login-time merge is not. Every
+   * resolved item is written atomically via `CartRepository.mergeItemsIntoCart`.
    */
   async mergeGuestCartIntoUserCart(
     guestCartId: string,
@@ -217,12 +239,9 @@ export class CartService {
       this.cartRepository.findItemsByCartId(targetCart.id),
     ]);
 
-    const targetQuantityByProduct = new Map(
-      targetItems.map((item) => [item.productId, item.quantity]),
-    );
     const resolvedItems = await this.resolveMergeItems(
       guestItems,
-      targetQuantityByProduct,
+      targetItems,
       targetCart.currency,
     );
 
@@ -256,55 +275,67 @@ export class CartService {
     const allItems = await this.cartRepository.findItemsByCartIds(
       result.items.map((cart) => cart.id),
     );
+    // One batched live-pricing pass across every cart on the page,
+    // rather than one per cart — same "batch the whole page" shape
+    // `modules/product`'s bulk lookup already established.
+    const pricedItems = await this.applyLivePricingToMany(allItems);
+
     const itemsByCartId = new Map<string, CartItem[]>();
-    for (const item of allItems) {
+    for (const item of pricedItems) {
       const items = itemsByCartId.get(item.cartId) ?? [];
       items.push(item);
       itemsByCartId.set(item.cartId, items);
     }
 
-    const priceSnapshots = await this.buildPriceSnapshotMap(allItems);
     const items = result.items.map((cart) =>
-      cartMapper.toCartResponseDto(
-        cart,
-        this.applyLivePricing(itemsByCartId.get(cart.id) ?? [], priceSnapshots),
-      ),
+      cartMapper.toCartResponseDto(cart, itemsByCartId.get(cart.id) ?? []),
     );
     return { items, meta: result.meta };
   }
 
+  /**
+   * Resolves each guest item's final merged state — sku-aware: two
+   * guest lines for the same product but different (variant) skus merge
+   * into two separate target lines, never collapsed into one (a cart
+   * line's real identity is `sku`, not `productId` — see
+   * `prisma/schema.prisma`'s `CartItem` doc comment).
+   */
   private async resolveMergeItems(
     guestItems: CartItem[],
-    targetQuantityByProduct: Map<string, number>,
+    targetItems: CartItem[],
     targetCurrency: string,
   ): Promise<MergeCartItemInput[]> {
-    const snapshots = await this.productAvailability.findManyByIds(
-      guestItems.map((item) => item.productId),
+    if (guestItems.length === 0) {
+      return [];
+    }
+
+    const productIds = [...new Set(guestItems.map((item) => item.productId))];
+    const productSnapshots = await this.productAvailability.findManyByIds(productIds);
+    const variantSnapshots = await this.productAvailability.findManyVariantsBySkus(
+      this.selectVariantSkus(guestItems, productSnapshots),
     );
+    const targetQuantityBySku = new Map(targetItems.map((item) => [item.sku, item.quantity]));
 
     const resolved: MergeCartItemInput[] = [];
     for (const item of guestItems) {
-      const snapshot = snapshots.get(item.productId);
-      if (
-        !this.isSellable(snapshot) ||
-        snapshot.sku !== item.sku ||
-        snapshot.currency !== targetCurrency
-      ) {
-        logger.warn(
-          { productId: item.productId },
-          "Skipped stale guest cart item during merge (product unavailable or currency mismatch)",
-        );
+      const line = this.resolveMergeLine(
+        item,
+        productSnapshots.get(item.productId),
+        variantSnapshots,
+        targetCurrency,
+      );
+      if (!line) {
         continue;
       }
 
-      const requestedQuantity = (targetQuantityByProduct.get(item.productId) ?? 0) + item.quantity;
+      const requestedQuantity = (targetQuantityBySku.get(line.sku) ?? 0) + item.quantity;
       const boundedQuantity = Math.min(requestedQuantity, CART_ITEM_MAX_QUANTITY);
-      const available = await this.productAvailability.getAvailableQuantity(snapshot.sku);
+      const available = await this.productAvailability.getAvailableQuantity(line.sku);
       const finalQuantity = Math.min(boundedQuantity, available);
 
       if (finalQuantity <= 0) {
         logger.warn(
-          { productId: item.productId },
+          { productId: item.productId, sku: line.sku },
           "Skipped out-of-stock guest cart item during merge",
         );
         continue;
@@ -312,12 +343,63 @@ export class CartService {
 
       resolved.push({
         productId: item.productId,
-        sku: snapshot.sku,
+        sku: line.sku,
         quantity: finalQuantity,
-        unitPrice: snapshot.price,
+        unitPrice: line.price,
       });
     }
     return resolved;
+  }
+
+  /** One guest item's resolved `(sku, price)`, or `null` if it should
+   * be dropped from the merge (product/variant no longer sellable, or a
+   * currency mismatch against the target cart). Logs exactly why on
+   * every skip — the caller has no other way to see it, since a
+   * skipped item never surfaces as an error to the end user. */
+  private resolveMergeLine(
+    item: CartItem,
+    product: ProductAvailabilitySnapshot | undefined,
+    variantSnapshots: Map<string, ProductVariantAvailabilitySnapshot>,
+    targetCurrency: string,
+  ): { sku: string; price: number } | null {
+    if (!this.isSellable(product)) {
+      logger.warn(
+        { productId: item.productId },
+        "Skipped stale guest cart item during merge (product unavailable)",
+      );
+      return null;
+    }
+
+    if (item.sku === product.sku) {
+      if (product.currency !== targetCurrency) {
+        logger.warn(
+          { productId: item.productId, sku: item.sku },
+          "Skipped guest cart item during merge (currency mismatch)",
+        );
+        return null;
+      }
+      return { sku: product.sku, price: product.price };
+    }
+
+    const variant = variantSnapshots.get(item.sku);
+    if (!variant || variant.productId !== item.productId || !variant.isActive) {
+      logger.warn(
+        { productId: item.productId, sku: item.sku },
+        "Skipped stale guest cart item during merge (variant unavailable)",
+      );
+      return null;
+    }
+
+    const price = variant.price ?? product.price;
+    const currency = variant.currency ?? product.currency;
+    if (currency !== targetCurrency) {
+      logger.warn(
+        { productId: item.productId, sku: item.sku },
+        "Skipped guest cart item during merge (currency mismatch)",
+      );
+      return null;
+    }
+    return { sku: variant.sku, price };
   }
 
   private async getOwnedCart(cartId: string, actor: AuthenticatedUser | null): Promise<Cart> {
@@ -352,24 +434,52 @@ export class CartService {
     }
   }
 
-  private async assertSellable(
+  /**
+   * Resolves what `(productId, requestedSku)` actually refers to and
+   * whether it's currently sellable — either the product's own sku (the
+   * original, base-product-only path, fully unchanged: same checks,
+   * same order, same error messages) or one of its *active* variants'
+   * skus. The parent product's own sellability (`active`/`public`/not
+   * deleted) is always checked first and always required, regardless of
+   * which path resolves — a variant of an unpublished/deleted product
+   * is never addable even if the variant itself is active.
+   *
+   * A `requestedSku` that is neither the product's own sku nor a real,
+   * active variant of *this* product falls through to the same
+   * `BadRequestError` the base-product-only version of this method
+   * always threw for a mismatched sku — deliberately not distinguishing
+   * "no such variant exists" from "that variant belongs to a different
+   * product" from "that's just a wrong sku", for the same "don't leak
+   * what exists" reasoning `assertCanMutateCart` documents.
+   */
+  private async resolveSellableLine(
     productId: string,
     requestedSku: string,
     cartCurrency: string,
-  ): Promise<ProductAvailabilitySnapshot> {
-    const snapshot = await this.productAvailability.findById(productId);
-    if (!this.isSellable(snapshot)) {
+  ): Promise<ResolvedCartLine> {
+    const product = await this.productAvailability.findById(productId);
+    if (!this.isSellable(product)) {
       throw new NotFoundError("Product not found or unavailable");
     }
-    if (snapshot.sku !== requestedSku) {
+
+    if (requestedSku === product.sku) {
+      this.assertCurrencyMatches(product.currency, cartCurrency);
+      return { sku: product.sku, price: product.price, currency: product.currency };
+    }
+
+    const variant = await this.productAvailability.findVariantBySku(requestedSku);
+    if (!variant || variant.productId !== productId) {
       throw new BadRequestError('"sku" does not match the given product');
     }
-    if (snapshot.currency !== cartCurrency) {
-      throw new ConflictError(
-        `Product currency "${snapshot.currency}" does not match cart currency "${cartCurrency}"`,
-      );
+    if (!variant.isActive) {
+      throw new NotFoundError("Product variant not found or unavailable");
     }
-    return snapshot;
+
+    const price = variant.price ?? product.price;
+    const currency = variant.currency ?? product.currency;
+    this.assertCurrencyMatches(currency, cartCurrency);
+
+    return { sku: variant.sku, price, currency };
   }
 
   private isSellable(
@@ -383,6 +493,14 @@ export class CartService {
     );
   }
 
+  private assertCurrencyMatches(skuCurrency: string, cartCurrency: string): void {
+    if (skuCurrency !== cartCurrency) {
+      throw new ConflictError(
+        `Product currency "${skuCurrency}" does not match cart currency "${cartCurrency}"`,
+      );
+    }
+  }
+
   private async assertStockAvailable(sku: string, requiredQuantity: number): Promise<void> {
     const available = await this.productAvailability.getAvailableQuantity(sku);
     if (available < requiredQuantity) {
@@ -394,35 +512,64 @@ export class CartService {
 
   private async buildCartResponse(cart: Cart): Promise<CartResponseDto> {
     const items = await this.cartRepository.findItemsByCartId(cart.id);
-    const snapshots = await this.buildPriceSnapshotMap(items);
-    return cartMapper.toCartResponseDto(cart, this.applyLivePricing(items, snapshots));
+    const pricedItems = await this.applyLivePricingToMany(items);
+    return cartMapper.toCartResponseDto(cart, pricedItems);
   }
 
-  /** Batches one product lookup across every distinct `productId`
-   * among `items`, rather than one lookup per item — used both for a
-   * single cart's response and (with the union of every item across a
-   * whole page) `listCarts`'s admin response. */
-  private async buildPriceSnapshotMap(
+  /** Every distinct `sku` among `items` that isn't its own product's
+   * base sku — i.e. every variant line — batched into one
+   * `findManyVariantsBySkus` call by `applyLivePricingToMany`/
+   * `resolveMergeItems`, never one lookup per item. */
+  private selectVariantSkus(
     items: CartItem[],
-  ): Promise<Map<string, ProductAvailabilitySnapshot>> {
+    productSnapshots: Map<string, ProductAvailabilitySnapshot>,
+  ): string[] {
+    return [
+      ...new Set(
+        items
+          .filter((item) => productSnapshots.get(item.productId)?.sku !== item.sku)
+          .map((item) => item.sku),
+      ),
+    ];
+  }
+
+  /**
+   * Re-prices every item at its *current* rate — never mutates the
+   * persisted snapshot (see `prisma/schema.prisma`'s `CartItem` doc
+   * comment). Base-product lines use the product's current price;
+   * variant lines use the variant's current price, falling back to the
+   * product's current price if the variant doesn't override it — the
+   * same fallback `resolveSellableLine` applies at add-time. A product
+   * (or variant) no longer found (deleted since being added) falls back
+   * to the item's last-known stored price rather than failing the whole
+   * response. One batched query for every distinct product id and one
+   * for every distinct variant sku involved — regardless of how many
+   * items (or, from `listCarts`, how many carts) are being priced.
+   */
+  private async applyLivePricingToMany(items: CartItem[]): Promise<CartItem[]> {
+    if (items.length === 0) {
+      return items;
+    }
+
     const productIds = [...new Set(items.map((item) => item.productId))];
-    return this.productAvailability.findManyByIds(productIds);
-  }
+    const productSnapshots = await this.productAvailability.findManyByIds(productIds);
+    const variantSnapshots = await this.productAvailability.findManyVariantsBySkus(
+      this.selectVariantSkus(items, productSnapshots),
+    );
 
-  /** Returns `items` with `unitPrice` replaced by each product's
-   * *current* price — never mutates the persisted snapshot (see
-   * `prisma/schema.prisma`'s `CartItem` doc comment) — satisfying
-   * "calculate totals from current product prices" without touching
-   * stored data. A product no longer found (deleted since being added)
-   * falls back to the item's last-known stored price rather than
-   * failing the whole response. */
-  private applyLivePricing(
-    items: CartItem[],
-    snapshots: Map<string, ProductAvailabilitySnapshot>,
-  ): CartItem[] {
     return items.map((item) => {
-      const snapshot = snapshots.get(item.productId);
-      return snapshot ? { ...item, unitPrice: snapshot.price } : item;
+      const product = productSnapshots.get(item.productId);
+      if (!product) {
+        return item;
+      }
+      if (item.sku === product.sku) {
+        return { ...item, unitPrice: product.price };
+      }
+      const variant = variantSnapshots.get(item.sku);
+      if (!variant) {
+        return item;
+      }
+      return { ...item, unitPrice: variant.price ?? product.price };
     });
   }
 }

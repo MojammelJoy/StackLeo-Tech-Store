@@ -41,11 +41,15 @@ export interface CartRepository {
    * of `N` carts costs one extra query, not `N`. */
   findItemsByCartIds(cartIds: string[]): Promise<CartItem[]>;
   findItemById(itemId: string): Promise<CartItem | null>;
-  findItemByCartAndProduct(cartId: string, productId: string): Promise<CartItem | null>;
-  /** Upserts by `(cartId, productId)` — `data.quantity` is always the
-   * FINAL absolute quantity to persist (already summed with whatever
-   * existed, if anything) as decided by `CartService`, never a delta;
-   * this method's job is only to make that decided write atomic. */
+  /** By `(cartId, sku)` — a cart line's real identity (see
+   * `prisma/schema.prisma`'s `CartItem` doc comment): `sku` is never
+   * scoped by `productId` here because it doesn't need to be — `sku` is
+   * already globally unique across base products and variants. */
+  findItemByCartAndSku(cartId: string, sku: string): Promise<CartItem | null>;
+  /** Upserts by `(cartId, sku)` — `data.quantity` is always the FINAL
+   * absolute quantity to persist (already summed with whatever existed,
+   * if anything) as decided by `CartService`, never a delta; this
+   * method's job is only to make that decided write atomic. */
   addItem(data: CreateCartItemInput): Promise<CartItem>;
   updateItem(itemId: string, data: UpdateCartItemInput): Promise<CartItem>;
   removeItem(itemId: string): Promise<void>;

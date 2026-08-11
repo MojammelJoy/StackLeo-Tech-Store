@@ -77,6 +77,7 @@ export type {
   CartRepository,
   ProductAvailabilityRepository,
   ProductAvailabilitySnapshot,
+  ProductVariantAvailabilitySnapshot,
 } from "./repository";
 
 export { CartService } from "./service";
